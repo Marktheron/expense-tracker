@@ -1,0 +1,603 @@
+'use client'
+
+import { useState, useRef, useEffect, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
+import { format } from 'date-fns'
+import {
+  ChevronDown,
+  ChevronRight,
+  Plus,
+  Trash2,
+  Save,
+  Copy,
+  ShoppingCart,
+  Fuel,
+  Heart,
+  Home,
+  Droplets,
+  Car,
+  Zap,
+  Film,
+  Shirt,
+  UtensilsCrossed,
+  CreditCard,
+  MoreHorizontal,
+  type LucideIcon,
+} from 'lucide-react'
+
+interface Category {
+  id: string
+  name: string
+  color: string
+}
+
+interface LineItemInput {
+  id: string
+  description: string
+  amount: string
+  categoryId: string
+}
+
+interface ExistingTransaction {
+  id: string
+  date: string
+  merchant: string
+  notes: string | null
+  lineItems: {
+    id: string
+    description: string
+    amount: number
+    categoryId: string
+  }[]
+}
+
+interface Props {
+  categories: Category[]
+  transaction?: ExistingTransaction
+}
+
+// Map category names to icons
+const categoryIcons: Record<string, LucideIcon> = {
+  'Groceries': ShoppingCart,
+  'Fuel': Fuel,
+  'Medical': Heart,
+  'Household': Home,
+  'Toiletries': Droplets,
+  'Transport': Car,
+  'Utilities': Zap,
+  'Entertainment': Film,
+  'Clothing': Shirt,
+  'Dining Out': UtensilsCrossed,
+  'Subscriptions': CreditCard,
+  'Other': MoreHorizontal,
+}
+
+function getCategoryIcon(name: string): LucideIcon {
+  return categoryIcons[name] || MoreHorizontal
+}
+
+export function TransactionForm({ categories, transaction }: Props) {
+  const router = useRouter()
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  // Form state
+  const [date, setDate] = useState(
+    transaction?.date
+      ? format(new Date(transaction.date), 'yyyy-MM-dd')
+      : format(new Date(), 'yyyy-MM-dd')
+  )
+  const [merchant, setMerchant] = useState(transaction?.merchant || '')
+  const [notes, setNotes] = useState(transaction?.notes || '')
+  const [showNotes, setShowNotes] = useState(!!transaction?.notes)
+
+  // Merchant suggestions
+  interface MerchantSuggestion {
+    merchant: string
+    lastDate: string
+    lineItems: { description: string; amount: number; categoryId: string }[]
+  }
+  const [recentMerchants, setRecentMerchants] = useState<MerchantSuggestion[]>([])
+  const [showMerchantSuggestions, setShowMerchantSuggestions] = useState(false)
+  const [filteredMerchants, setFilteredMerchants] = useState<MerchantSuggestion[]>([])
+
+  useEffect(() => {
+    // Fetch recent merchants on mount
+    fetch('/api/merchants')
+      .then((res) => res.json())
+      .then(setRecentMerchants)
+      .catch(() => {})
+  }, [])
+
+  useEffect(() => {
+    if (merchant && recentMerchants.length > 0) {
+      const filtered = recentMerchants.filter((m) =>
+        m.merchant.toLowerCase().includes(merchant.toLowerCase())
+      )
+      setFilteredMerchants(filtered)
+    } else {
+      setFilteredMerchants(recentMerchants)
+    }
+  }, [merchant, recentMerchants])
+
+  const selectMerchant = (suggestion: MerchantSuggestion) => {
+    setMerchant(suggestion.merchant)
+    setShowMerchantSuggestions(false)
+
+    // Auto-fill with previous items
+    const newItems = suggestion.lineItems.map((item) => ({
+      id: crypto.randomUUID(),
+      description: item.description,
+      amount: item.amount.toString(),
+      categoryId: item.categoryId,
+    }))
+    setLineItems(newItems)
+    setExpandedCategories(new Set(newItems.map((li) => li.categoryId)))
+  }
+
+  // Line items grouped by category
+  const initialLineItems: LineItemInput[] = transaction?.lineItems.map((li) => ({
+    id: crypto.randomUUID(),
+    description: li.description,
+    amount: li.amount.toString(),
+    categoryId: li.categoryId,
+  })) || []
+
+  const [lineItems, setLineItems] = useState<LineItemInput[]>(initialLineItems)
+  const [lastAddedItemId, setLastAddedItemId] = useState<string | null>(null)
+
+  // Track which category accordions are expanded
+  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(
+    new Set(initialLineItems.map((li) => li.categoryId))
+  )
+
+  const toggleCategory = (categoryId: string) => {
+    setExpandedCategories((prev) => {
+      const next = new Set(prev)
+      if (next.has(categoryId)) {
+        next.delete(categoryId)
+      } else {
+        next.add(categoryId)
+      }
+      return next
+    })
+  }
+
+  const addLineItem = (categoryId: string) => {
+    const newId = crypto.randomUUID()
+    setLineItems((prev) => [
+      ...prev,
+      {
+        id: newId,
+        description: '',
+        amount: '',
+        categoryId,
+      },
+    ])
+    setExpandedCategories((prev) => new Set([...prev, categoryId]))
+    setLastAddedItemId(newId)
+  }
+
+  const updateLineItem = (id: string, field: 'description' | 'amount', value: string) => {
+    setLineItems((prev) =>
+      prev.map((item) =>
+        item.id === id ? { ...item, [field]: value } : item
+      )
+    )
+  }
+
+  const removeLineItem = (id: string) => {
+    setLineItems((prev) => prev.filter((item) => item.id !== id))
+  }
+
+  const duplicateLineItem = (id: string) => {
+    const item = lineItems.find((li) => li.id === id)
+    if (!item) return
+    const newId = crypto.randomUUID()
+    setLineItems((prev) => [
+      ...prev,
+      {
+        id: newId,
+        description: item.description,
+        amount: item.amount,
+        categoryId: item.categoryId,
+      },
+    ])
+    setLastAddedItemId(newId)
+  }
+
+  const getLineItemsForCategory = (categoryId: string) =>
+    lineItems.filter((item) => item.categoryId === categoryId)
+
+  const getCategoryTotal = (categoryId: string) =>
+    getLineItemsForCategory(categoryId).reduce(
+      (sum, item) => sum + (parseFloat(item.amount) || 0),
+      0
+    )
+
+  const getGrandTotal = () =>
+    lineItems.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0)
+
+  const categoriesWithItems = categories.filter(
+    (cat) => getLineItemsForCategory(cat.id).length > 0
+  )
+
+  const categoriesWithoutItems = categories.filter(
+    (cat) => getLineItemsForCategory(cat.id).length === 0
+  )
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!merchant.trim() || lineItems.length === 0) return
+
+    setIsSubmitting(true)
+
+    const payload = {
+      date,
+      merchant: merchant.trim(),
+      notes: notes.trim() || null,
+      lineItems: lineItems
+        .filter((item) => item.description.trim() && parseFloat(item.amount) > 0)
+        .map((item) => ({
+          description: item.description.trim(),
+          amount: parseFloat(item.amount),
+          categoryId: item.categoryId,
+        })),
+    }
+
+    try {
+      const url = transaction
+        ? `/api/transactions/${transaction.id}`
+        : '/api/transactions'
+      const method = transaction ? 'PUT' : 'POST'
+
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+
+      if (res.ok) {
+        router.push('/transactions')
+        router.refresh()
+      }
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-6">
+      {/* Transaction Details */}
+      <div className="rounded-lg bg-white dark:bg-gray-800 p-6 shadow-sm border border-gray-200 dark:border-gray-700">
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+          Transaction Details
+        </h2>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div>
+            <label htmlFor="date" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+              Date
+            </label>
+            <div className="mt-1 flex gap-2">
+              <input
+                type="date"
+                id="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                className="block w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setDate(format(new Date(), 'yyyy-MM-dd'))}
+                className={`px-3 py-2 text-sm rounded-md border transition-colors ${
+                  date === format(new Date(), 'yyyy-MM-dd')
+                    ? 'bg-blue-100 dark:bg-blue-900 border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-300'
+                    : 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'
+                }`}
+              >
+                Today
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const yesterday = new Date()
+                  yesterday.setDate(yesterday.getDate() - 1)
+                  setDate(format(yesterday, 'yyyy-MM-dd'))
+                }}
+                className={`px-3 py-2 text-sm rounded-md border transition-colors ${
+                  date === format(new Date(Date.now() - 86400000), 'yyyy-MM-dd')
+                    ? 'bg-blue-100 dark:bg-blue-900 border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-300'
+                    : 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'
+                }`}
+              >
+                Yesterday
+              </button>
+            </div>
+          </div>
+          <div className="relative">
+            <label htmlFor="merchant" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+              Merchant / Store
+            </label>
+            <input
+              type="text"
+              id="merchant"
+              value={merchant}
+              onChange={(e) => setMerchant(e.target.value)}
+              onFocus={() => setShowMerchantSuggestions(true)}
+              onBlur={() => setTimeout(() => setShowMerchantSuggestions(false), 200)}
+              placeholder="e.g., Woolworths, Shell, Chemist"
+              className="mt-1 block w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder:text-gray-400 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              required
+              autoComplete="off"
+            />
+            {showMerchantSuggestions && filteredMerchants.length > 0 && !transaction && (
+              <div className="absolute z-10 mt-1 w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                <div className="px-3 py-2 text-xs text-gray-500 dark:text-gray-400 border-b border-gray-100 dark:border-gray-700">
+                  Recent merchants (click to auto-fill)
+                </div>
+                {filteredMerchants.slice(0, 8).map((m, index) => (
+                  <button
+                    key={index}
+                    type="button"
+                    onClick={() => selectMerchant(m)}
+                    className="w-full text-left px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center justify-between"
+                  >
+                    <span className="font-medium text-gray-900 dark:text-white">{m.merchant}</span>
+                    <span className="text-xs text-gray-500 dark:text-gray-400">
+                      {m.lineItems.length} item{m.lineItems.length !== 1 ? 's' : ''}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          <div className="sm:col-span-2">
+            {showNotes ? (
+              <div>
+                <div className="flex items-center justify-between">
+                  <label htmlFor="notes" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Notes
+                  </label>
+                  {!notes.trim() && (
+                    <button
+                      type="button"
+                      onClick={() => setShowNotes(false)}
+                      className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                    >
+                      Hide
+                    </button>
+                  )}
+                </div>
+                <textarea
+                  id="notes"
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder="Any additional notes..."
+                  autoFocus
+                  rows={2}
+                  className="mt-1 block w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder:text-gray-400 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 resize-y min-h-[60px]"
+                />
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setShowNotes(true)}
+                className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 transition-colors"
+              >
+                <Plus className="h-3 w-3" />
+                Add note
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Line Items by Category */}
+      <div className="rounded-lg bg-white dark:bg-gray-800 p-6 shadow-sm border border-gray-200 dark:border-gray-700">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Items</h2>
+          <div className="text-lg font-bold text-gray-900 dark:text-white">
+            Total: R{getGrandTotal().toFixed(2)}
+          </div>
+        </div>
+
+        {/* Category icon buttons - always visible at top */}
+        <div className="mb-4">
+          <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-12 gap-3">
+            {categories.map((category) => {
+              const Icon = getCategoryIcon(category.name)
+              const hasItems = getLineItemsForCategory(category.id).length > 0
+              return (
+                <button
+                  key={category.id}
+                  type="button"
+                  onClick={() => addLineItem(category.id)}
+                  className="flex flex-col items-center gap-1 group"
+                >
+                  <div
+                    className={`w-12 h-12 rounded-full flex items-center justify-center transition-transform group-hover:scale-110 ${
+                      hasItems ? 'ring-2 ring-offset-2 ring-gray-400' : ''
+                    }`}
+                    style={{ backgroundColor: category.color }}
+                  >
+                    <Icon className="h-5 w-5 text-white" />
+                  </div>
+                  <span className="text-xs text-gray-600 dark:text-gray-400 text-center leading-tight">
+                    {category.name}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* Categories with items */}
+        {categoriesWithItems.length > 0 && (
+          <div className="space-y-2 pt-4 border-t border-gray-200 dark:border-gray-700">
+            {categoriesWithItems.map((category) => (
+              <CategoryAccordion
+                key={category.id}
+                category={category}
+                lineItems={getLineItemsForCategory(category.id)}
+                isExpanded={expandedCategories.has(category.id)}
+                onToggle={() => toggleCategory(category.id)}
+                onAddItem={() => addLineItem(category.id)}
+                onUpdateItem={updateLineItem}
+                onRemoveItem={removeLineItem}
+                onDuplicateItem={duplicateLineItem}
+                total={getCategoryTotal(category.id)}
+                lastAddedItemId={lastAddedItemId}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Submit */}
+      <div className="flex justify-end gap-3">
+        <button
+          type="button"
+          onClick={() => router.back()}
+          className="rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+        >
+          Cancel
+        </button>
+        <button
+          type="submit"
+          disabled={isSubmitting || !merchant.trim() || lineItems.length === 0}
+          className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        >
+          <Save className="h-4 w-4" />
+          {isSubmitting ? 'Saving...' : transaction ? 'Update' : 'Save Transaction'}
+        </button>
+      </div>
+    </form>
+  )
+}
+
+interface CategoryAccordionProps {
+  category: Category
+  lineItems: LineItemInput[]
+  isExpanded: boolean
+  onToggle: () => void
+  onAddItem: () => void
+  onUpdateItem: (id: string, field: 'description' | 'amount', value: string) => void
+  onRemoveItem: (id: string) => void
+  onDuplicateItem: (id: string) => void
+  total: number
+  lastAddedItemId: string | null
+}
+
+function CategoryAccordion({
+  category,
+  lineItems,
+  isExpanded,
+  onToggle,
+  onAddItem,
+  onUpdateItem,
+  onRemoveItem,
+  onDuplicateItem,
+  total,
+  lastAddedItemId,
+}: CategoryAccordionProps) {
+  const Icon = getCategoryIcon(category.name)
+  const descriptionRefs = useRef<Record<string, HTMLInputElement | null>>({})
+
+  useEffect(() => {
+    if (lastAddedItemId && descriptionRefs.current[lastAddedItemId]) {
+      descriptionRefs.current[lastAddedItemId]?.focus()
+    }
+  }, [lastAddedItemId])
+
+  const handleAmountKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      onAddItem()
+    }
+  }
+
+  return (
+    <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+      <button
+        type="button"
+        onClick={onToggle}
+        className="flex items-center justify-between w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
+      >
+        <div className="flex items-center gap-3">
+          {isExpanded ? (
+            <ChevronDown className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+          ) : (
+            <ChevronRight className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+          )}
+          <div
+            className="h-8 w-8 rounded-full flex items-center justify-center"
+            style={{ backgroundColor: category.color }}
+          >
+            <Icon className="h-4 w-4 text-white" />
+          </div>
+          <span className="font-medium text-gray-900 dark:text-white">{category.name}</span>
+          <span className="text-sm text-gray-500 dark:text-gray-400">
+            ({lineItems.length} item{lineItems.length !== 1 ? 's' : ''})
+          </span>
+        </div>
+        <span className="font-semibold text-gray-900 dark:text-white">R{total.toFixed(2)}</span>
+      </button>
+
+      {isExpanded && (
+        <div className="p-4 space-y-3 bg-white dark:bg-gray-800">
+          {lineItems.map((item) => (
+            <div key={item.id} className="flex items-center gap-3">
+              <input
+                type="text"
+                ref={(el) => { descriptionRefs.current[item.id] = el }}
+                value={item.description}
+                onChange={(e) => onUpdateItem(item.id, 'description', e.target.value)}
+                placeholder="Item description"
+                className="flex-1 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder:text-gray-400 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              />
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400">
+                  R
+                </span>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={item.amount}
+                  onChange={(e) => onUpdateItem(item.id, 'amount', e.target.value)}
+                  onKeyDown={handleAmountKeyDown}
+                  placeholder="0.00"
+                  className="w-28 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder:text-gray-400 pl-7 pr-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                />
+              </div>
+              <button
+                type="button"
+                onClick={() => onDuplicateItem(item.id)}
+                className="p-1.5 text-gray-400 hover:text-blue-500 dark:hover:text-blue-400 transition-colors"
+                title="Duplicate item"
+              >
+                <Copy className="h-3.5 w-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => onRemoveItem(item.id)}
+                className="p-1.5 text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors"
+                title="Remove item"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          ))}
+          <button
+            type="button"
+            onClick={onAddItem}
+            className="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
+          >
+            <Plus className="h-4 w-4" />
+            Add item
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}

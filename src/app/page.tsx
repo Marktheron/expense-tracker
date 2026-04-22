@@ -1,65 +1,187 @@
-import Image from "next/image";
+import { prisma } from '@/lib/db'
+import { Dashboard } from '@/components/Dashboard'
 
-export default function Home() {
-  return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
-  );
+async function getStats() {
+  const now = new Date()
+  const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+  const lastOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59)
+
+  // Last month
+  const firstOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+  const lastOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59)
+
+  const dateFilter = {
+    gte: firstOfMonth,
+    lte: lastOfMonth,
+  }
+
+  const lastMonthFilter = {
+    gte: firstOfLastMonth,
+    lte: lastOfLastMonth,
+  }
+
+  const totalSpending = await prisma.lineItem.aggregate({
+    where: {
+      transaction: {
+        date: dateFilter,
+      },
+    },
+    _sum: { amount: true },
+  })
+
+  const spendingByCategory = await prisma.lineItem.groupBy({
+    by: ['categoryId'],
+    where: {
+      transaction: {
+        date: dateFilter,
+      },
+    },
+    _sum: { amount: true },
+  })
+
+  const categories = await prisma.category.findMany()
+  const categoryMap = Object.fromEntries(categories.map((c) => [c.id, c]))
+
+  const categoryBreakdown = spendingByCategory
+    .map((item) => ({
+      category: categoryMap[item.categoryId],
+      total: item._sum.amount || 0,
+    }))
+    .sort((a, b) => b.total - a.total)
+
+  const transactionCount = await prisma.transaction.count({
+    where: { date: dateFilter },
+  })
+
+  const transactions = await prisma.transaction.findMany({
+    where: { date: dateFilter },
+    include: { lineItems: true },
+    orderBy: { date: 'asc' },
+  })
+
+  const dailySpending: Record<string, number> = {}
+  for (const tx of transactions) {
+    const dateKey = tx.date.toISOString().split('T')[0]
+    const txTotal = tx.lineItems.reduce((sum, item) => sum + item.amount, 0)
+    dailySpending[dateKey] = (dailySpending[dateKey] || 0) + txTotal
+  }
+
+  const recentTransactions = await prisma.transaction.findMany({
+    include: {
+      lineItems: {
+        include: { category: true },
+      },
+    },
+    orderBy: { date: 'desc' },
+    take: 5,
+  })
+
+  // Top products this month
+  const allLineItems = await prisma.lineItem.findMany({
+    where: {
+      transaction: {
+        date: dateFilter,
+      },
+    },
+    include: { category: true },
+  })
+
+  const productTotals: Record<string, { description: string; count: number; total: number; category: { id: string; name: string; color: string } }> = {}
+  for (const item of allLineItems) {
+    const key = item.description.toLowerCase().trim()
+    if (!productTotals[key]) {
+      productTotals[key] = {
+        description: item.description,
+        count: 0,
+        total: 0,
+        category: { id: item.category.id, name: item.category.name, color: item.category.color },
+      }
+    }
+    productTotals[key].count++
+    productTotals[key].total += item.amount
+  }
+
+  const topProducts = Object.values(productTotals)
+    .sort((a, b) => b.total - a.total)
+    .slice(0, 10)
+
+  // Last month totals for comparison
+  const lastMonthTotal = await prisma.lineItem.aggregate({
+    where: {
+      transaction: {
+        date: lastMonthFilter,
+      },
+    },
+    _sum: { amount: true },
+  })
+
+  const lastMonthByCategory = await prisma.lineItem.groupBy({
+    by: ['categoryId'],
+    where: {
+      transaction: {
+        date: lastMonthFilter,
+      },
+    },
+    _sum: { amount: true },
+  })
+
+  const lastMonthCategoryMap = Object.fromEntries(
+    lastMonthByCategory.map((item) => [item.categoryId, item._sum.amount || 0])
+  )
+
+  const monthComparison = {
+    thisMonth: totalSpending._sum.amount || 0,
+    lastMonth: lastMonthTotal._sum.amount || 0,
+    lastMonthName: firstOfLastMonth.toLocaleString('default', { month: 'long' }),
+    categoryChanges: categoryBreakdown.map((item) => ({
+      category: {
+        id: item.category.id,
+        name: item.category.name,
+        color: item.category.color,
+      },
+      thisMonth: item.total,
+      lastMonth: lastMonthCategoryMap[item.category.id] || 0,
+    })).filter((item) => item.thisMonth !== item.lastMonth || item.lastMonth > 0),
+  }
+
+  return {
+    totalSpending: totalSpending._sum.amount || 0,
+    categoryBreakdown: categoryBreakdown.map((item) => ({
+      category: {
+        id: item.category.id,
+        name: item.category.name,
+        color: item.category.color,
+      },
+      total: item.total,
+    })),
+    transactionCount,
+    dailySpending: Object.entries(dailySpending).map(([date, amount]) => ({
+      date,
+      amount,
+    })),
+    recentTransactions: recentTransactions.map((tx) => ({
+      id: tx.id,
+      date: tx.date.toISOString(),
+      merchant: tx.merchant,
+      notes: tx.notes,
+      lineItems: tx.lineItems.map((li) => ({
+        id: li.id,
+        description: li.description,
+        amount: li.amount,
+        category: {
+          id: li.category.id,
+          name: li.category.name,
+          color: li.category.color,
+        },
+      })),
+    })),
+    currentMonth: now.toLocaleString('default', { month: 'long', year: 'numeric' }),
+    topProducts,
+    monthComparison,
+  }
+}
+
+export default async function Home() {
+  const stats = await getStats()
+  return <Dashboard stats={stats} />
 }
