@@ -43,6 +43,7 @@ export default async function EditTransactionPage({ params }: Props) {
       description: li.description,
       amount: li.amount,
       categoryId: li.categoryId,
+      vitalityQualifying: li.vitalityQualifying,
     })),
   }
 
