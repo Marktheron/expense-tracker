@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { format } from 'date-fns'
-import { PlusCircle, TrendingUp, TrendingDown, Receipt, Wallet, StickyNote, ShoppingCart, Activity } from 'lucide-react'
+import { PlusCircle, TrendingUp, TrendingDown, Wallet, StickyNote, Activity } from 'lucide-react'
 import {
   BarChart,
   Bar,
@@ -81,7 +81,6 @@ interface Stats {
   totalSpending: number
   categoryBreakdown: CategoryBreakdown[]
   transactionCount: number
-  lineItemsCount: number
   dailySpending: DailySpending[]
   recentTransactions: Transaction[]
   currentMonth: string
@@ -120,7 +119,7 @@ export function Dashboard({ stats }: { stats: Stats }) {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <div className="rounded-lg bg-white dark:bg-gray-800 p-6 shadow-sm border border-gray-200 dark:border-gray-700">
           <div className="flex items-center gap-3">
             <div className="rounded-full bg-blue-100 dark:bg-blue-900 p-2">
@@ -146,19 +145,6 @@ export function Dashboard({ stats }: { stats: Stats }) {
                   {' '}vs {stats.monthComparison.lastMonthName}
                 </p>
               )}
-            </div>
-          </div>
-        </div>
-        <div className="rounded-lg bg-white dark:bg-gray-800 p-6 shadow-sm border border-gray-200 dark:border-gray-700">
-          <div className="flex items-center gap-3">
-            <div className="rounded-full bg-green-100 dark:bg-green-900 p-2">
-              <ShoppingCart className="h-5 w-5 text-green-600 dark:text-green-400" />
-            </div>
-            <div>
-              <p className="text-sm text-gray-500 dark:text-gray-400">Line Items</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                {stats.lineItemsCount}
-              </p>
             </div>
           </div>
         </div>
@@ -356,7 +342,10 @@ export function Dashboard({ stats }: { stats: Stats }) {
                       className="h-3 w-3 rounded-full"
                       style={{ backgroundColor: product.category.color }}
                     />
-                    <span className="font-medium text-gray-900 dark:text-white text-sm truncate max-w-[120px]">{product.description}</span>
+                    <span className="font-medium text-gray-900 dark:text-white text-sm truncate max-w-[120px]">
+                      {product.description}
+                      <span className="text-gray-400 dark:text-gray-500 font-normal"> ({product.count})</span>
+                    </span>
                   </div>
                   <span className="font-bold text-gray-900 dark:text-white text-sm">
                     {formatCurrency(product.total)}
