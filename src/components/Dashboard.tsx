@@ -378,17 +378,6 @@ export function Dashboard({ stats }: { stats: Stats }) {
                     className="flex items-center justify-between px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                   >
                     <div className="flex items-center gap-3">
-                      <div className="flex -space-x-1">
-                        {[...new Set(tx.lineItems.map((li) => li.category.color))]
-                          .slice(0, 2)
-                          .map((color, i) => (
-                            <div
-                              key={i}
-                              className="h-6 w-6 rounded-full border-2 border-white dark:border-gray-800"
-                              style={{ backgroundColor: color }}
-                            />
-                          ))}
-                      </div>
                       <div>
                         <p className="font-medium text-gray-900 dark:text-white text-sm flex items-center gap-1">
                           {tx.merchant}
@@ -399,6 +388,17 @@ export function Dashboard({ stats }: { stats: Stats }) {
                         <p className="text-xs text-gray-500 dark:text-gray-400">
                           {format(new Date(tx.date), 'MMM d')}
                         </p>
+                      </div>
+                      <div className="flex -space-x-1">
+                        {[...new Set(tx.lineItems.map((li) => li.category.color))]
+                          .slice(0, 2)
+                          .map((color, i) => (
+                            <div
+                              key={i}
+                              className="h-6 w-6 rounded-full border-2 border-white dark:border-gray-800"
+                              style={{ backgroundColor: color }}
+                            />
+                          ))}
                       </div>
                     </div>
                     <span className="font-semibold text-gray-900 dark:text-white text-sm">

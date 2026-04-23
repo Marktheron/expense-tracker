@@ -347,6 +347,17 @@ export function TransactionList({ initialTransactions, categories }: Props) {
                     ) : (
                       <ChevronRight className="h-4 w-4 text-gray-400 dark:text-gray-500" />
                     )}
+                    <div>
+                      <p className="font-medium text-gray-900 dark:text-white flex items-center gap-1.5">
+                        {tx.merchant}
+                        {tx.notes && (
+                          <StickyNote className="h-3.5 w-3.5 text-gray-400 dark:text-gray-500" title={tx.notes} />
+                        )}
+                      </p>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">
+                        {format(new Date(tx.date), 'PPP')}
+                      </p>
+                    </div>
                     <div className="flex -space-x-1">
                       {categoryGroups.slice(0, 3).map((group) => (
                         <div
@@ -358,17 +369,6 @@ export function TransactionList({ initialTransactions, categories }: Props) {
                           {group.items.length}
                         </div>
                       ))}
-                    </div>
-                    <div>
-                      <p className="font-medium text-gray-900 dark:text-white flex items-center gap-1.5">
-                        {tx.merchant}
-                        {tx.notes && (
-                          <StickyNote className="h-3.5 w-3.5 text-gray-400 dark:text-gray-500" title={tx.notes} />
-                        )}
-                      </p>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">
-                        {format(new Date(tx.date), 'PPP')}
-                      </p>
                     </div>
                   </div>
                   <div className="flex items-center gap-4">
