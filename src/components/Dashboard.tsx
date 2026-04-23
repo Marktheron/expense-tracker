@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { format } from 'date-fns'
-import { PlusCircle, TrendingUp, TrendingDown, Receipt, Wallet, StickyNote } from 'lucide-react'
+import { PlusCircle, TrendingUp, TrendingDown, Receipt, Wallet, StickyNote, ShoppingCart, Activity } from 'lucide-react'
 import {
   BarChart,
   Bar,
@@ -66,15 +66,23 @@ interface MonthComparison {
   categoryChanges: CategoryChange[]
 }
 
+interface SpendingPace {
+  thisMonth: number
+  lastMonthSamePoint: number
+  dayOfMonth: number
+}
+
 interface Stats {
   totalSpending: number
   categoryBreakdown: CategoryBreakdown[]
   transactionCount: number
+  lineItemsCount: number
   dailySpending: DailySpending[]
   recentTransactions: Transaction[]
   currentMonth: string
   topProducts: TopProduct[]
   monthComparison: MonthComparison
+  spendingPace: SpendingPace
 }
 
 function formatCurrency(amount: number) {
@@ -138,12 +146,12 @@ export function Dashboard({ stats }: { stats: Stats }) {
         <div className="rounded-lg bg-white dark:bg-gray-800 p-6 shadow-sm border border-gray-200 dark:border-gray-700">
           <div className="flex items-center gap-3">
             <div className="rounded-full bg-green-100 dark:bg-green-900 p-2">
-              <Receipt className="h-5 w-5 text-green-600 dark:text-green-400" />
+              <ShoppingCart className="h-5 w-5 text-green-600 dark:text-green-400" />
             </div>
             <div>
-              <p className="text-sm text-gray-500 dark:text-gray-400">Transactions</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">Line Items</p>
               <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                {stats.transactionCount}
+                {stats.lineItemsCount}
               </p>
             </div>
           </div>
@@ -151,13 +159,32 @@ export function Dashboard({ stats }: { stats: Stats }) {
         <div className="rounded-lg bg-white dark:bg-gray-800 p-6 shadow-sm border border-gray-200 dark:border-gray-700">
           <div className="flex items-center gap-3">
             <div className="rounded-full bg-purple-100 dark:bg-purple-900 p-2">
-              <TrendingUp className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+              <Activity className="h-5 w-5 text-purple-600 dark:text-purple-400" />
             </div>
-            <div>
-              <p className="text-sm text-gray-500 dark:text-gray-400">Categories Used</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                {stats.categoryBreakdown.length}
-              </p>
+            <div className="flex-1">
+              <p className="text-sm text-gray-500 dark:text-gray-400">Spending Pace</p>
+              {stats.spendingPace.lastMonthSamePoint > 0 ? (
+                <>
+                  <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                    {stats.spendingPace.thisMonth > stats.spendingPace.lastMonthSamePoint ? 'Ahead' : 'Behind'}
+                  </p>
+                  <p className={`text-xs flex items-center gap-1 mt-1 ${
+                    stats.spendingPace.thisMonth > stats.spendingPace.lastMonthSamePoint
+                      ? 'text-red-600'
+                      : 'text-green-600'
+                  }`}>
+                    {stats.spendingPace.thisMonth > stats.spendingPace.lastMonthSamePoint ? (
+                      <TrendingUp className="h-3 w-3" />
+                    ) : (
+                      <TrendingDown className="h-3 w-3" />
+                    )}
+                    {formatCurrency(Math.abs(stats.spendingPace.thisMonth - stats.spendingPace.lastMonthSamePoint))}
+                    {' '}by day {stats.spendingPace.dayOfMonth}
+                  </p>
+                </>
+              ) : (
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">—</p>
+              )}
             </div>
           </div>
         </div>

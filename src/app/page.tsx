@@ -105,11 +105,29 @@ async function getStats() {
     .sort((a, b) => b.total - a.total)
     .slice(0, 10)
 
+  // Line items count this month
+  const lineItemsCount = allLineItems.length
+
   // Last month totals for comparison
   const lastMonthTotal = await prisma.lineItem.aggregate({
     where: {
       transaction: {
         date: lastMonthFilter,
+      },
+    },
+    _sum: { amount: true },
+  })
+
+  // Spending pace: last month up to same day
+  const dayOfMonth = now.getDate()
+  const lastMonthSameDay = new Date(now.getFullYear(), now.getMonth() - 1, dayOfMonth, 23, 59, 59)
+  const lastMonthPaceTotal = await prisma.lineItem.aggregate({
+    where: {
+      transaction: {
+        date: {
+          gte: firstOfLastMonth,
+          lte: lastMonthSameDay,
+        },
       },
     },
     _sum: { amount: true },
@@ -155,6 +173,12 @@ async function getStats() {
       total: item.total,
     })),
     transactionCount,
+    lineItemsCount,
+    spendingPace: {
+      thisMonth: totalSpending._sum.amount || 0,
+      lastMonthSamePoint: lastMonthPaceTotal._sum.amount || 0,
+      dayOfMonth,
+    },
     dailySpending: Object.entries(dailySpending).map(([date, amount]) => ({
       date,
       amount,
