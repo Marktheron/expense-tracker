@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { format } from 'date-fns'
-import { PlusCircle, TrendingUp, TrendingDown, Wallet, StickyNote, Activity } from 'lucide-react'
+import { PlusCircle, ArrowUp, ArrowDown, Wallet, StickyNote, Activity } from 'lucide-react'
 import {
   BarChart,
   Bar,
@@ -137,9 +137,9 @@ export function Dashboard({ stats }: { stats: Stats }) {
                     : 'text-green-600'
                 }`}>
                   {stats.monthComparison.thisMonth > stats.monthComparison.lastMonth ? (
-                    <TrendingUp className="h-3 w-3" />
+                    <ArrowUp className="h-3 w-3" strokeWidth={3} />
                   ) : (
-                    <TrendingDown className="h-3 w-3" />
+                    <ArrowDown className="h-3 w-3" strokeWidth={3} />
                   )}
                   {formatCurrency(Math.abs(stats.monthComparison.thisMonth - stats.monthComparison.lastMonth))}
                   {' '}vs {stats.monthComparison.lastMonthName}
@@ -166,9 +166,9 @@ export function Dashboard({ stats }: { stats: Stats }) {
                       : 'text-green-600'
                   }`}>
                     {stats.spendingPace.thisMonth > stats.spendingPace.lastMonthSamePoint ? (
-                      <TrendingUp className="h-3 w-3" />
+                      <ArrowUp className="h-3 w-3" strokeWidth={3} />
                     ) : (
-                      <TrendingDown className="h-3 w-3" />
+                      <ArrowDown className="h-3 w-3" strokeWidth={3} />
                     )}
                     {formatCurrency(Math.abs(stats.spendingPace.thisMonth - stats.spendingPace.lastMonthSamePoint))}
                     {' '}by day {stats.spendingPace.dayOfMonth}
@@ -312,7 +312,7 @@ export function Dashboard({ stats }: { stats: Stats }) {
                       <span className={`text-sm font-medium flex items-center gap-1 ${
                         isUp ? 'text-red-600' : 'text-green-600'
                       }`}>
-                        {isUp ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+                        {isUp ? <ArrowUp className="h-3 w-3" strokeWidth={3} /> : <ArrowDown className="h-3 w-3" strokeWidth={3} />}
                         {isUp ? '+' : ''}{formatCurrency(diff)}
                       </span>
                     </div>
