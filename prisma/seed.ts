@@ -20,6 +20,7 @@ const categories = [
   { name: 'Dining Out', color: '#84CC16' },     // lime-500
   { name: 'Subscriptions', color: '#6366F1' },  // indigo-500
   { name: 'Other', color: '#6B7280' },          // gray-500
+  { name: 'Debt', color: '#0F172A' },           // slate-900
 ]
 
 async function main() {

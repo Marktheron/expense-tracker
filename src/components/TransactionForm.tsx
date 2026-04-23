@@ -22,6 +22,7 @@ import {
   UtensilsCrossed,
   CreditCard,
   MoreHorizontal,
+  Landmark,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -69,11 +70,43 @@ const categoryIcons: Record<string, LucideIcon> = {
   'Clothing': Shirt,
   'Dining Out': UtensilsCrossed,
   'Subscriptions': CreditCard,
+  'Debt': Landmark,
   'Other': MoreHorizontal,
 }
 
+// Custom category display order (categories not listed here will appear at the end alphabetically)
+const categoryOrder: string[] = [
+  'Groceries',
+  'Medical',
+  'Fuel',
+  'Household',
+  'Toiletries',
+  'Transport',
+  'Utilities',
+  'Entertainment',
+  'Clothing',
+  'Dining Out',
+  'Subscriptions',
+  'Other',
+  'Debt',
+]
+
 function getCategoryIcon(name: string): LucideIcon {
   return categoryIcons[name] || MoreHorizontal
+}
+
+function sortCategories<T extends { name: string }>(cats: T[]): T[] {
+  return [...cats].sort((a, b) => {
+    const aIndex = categoryOrder.indexOf(a.name)
+    const bIndex = categoryOrder.indexOf(b.name)
+    // If both in order list, sort by order
+    if (aIndex !== -1 && bIndex !== -1) return aIndex - bIndex
+    // If only one is in list, it comes first
+    if (aIndex !== -1) return -1
+    if (bIndex !== -1) return 1
+    // Otherwise alphabetical
+    return a.name.localeCompare(b.name)
+  })
 }
 
 export function TransactionForm({ categories, transaction }: Props) {
@@ -90,48 +123,32 @@ export function TransactionForm({ categories, transaction }: Props) {
   const [notes, setNotes] = useState(transaction?.notes || '')
   const [showNotes, setShowNotes] = useState(!!transaction?.notes)
 
-  // Merchant suggestions
-  interface MerchantSuggestion {
-    merchant: string
-    lastDate: string
-    lineItems: { description: string; amount: number; categoryId: string }[]
-  }
-  const [recentMerchants, setRecentMerchants] = useState<MerchantSuggestion[]>([])
+  // Merchant autocomplete
+  const [recentMerchants, setRecentMerchants] = useState<string[]>([])
   const [showMerchantSuggestions, setShowMerchantSuggestions] = useState(false)
-  const [filteredMerchants, setFilteredMerchants] = useState<MerchantSuggestion[]>([])
 
   useEffect(() => {
     // Fetch recent merchants on mount
     fetch('/api/merchants')
       .then((res) => res.json())
-      .then(setRecentMerchants)
+      .then((data) => {
+        // Extract unique merchant names
+        const names = data.map((m: { merchant: string }) => m.merchant)
+        setRecentMerchants([...new Set(names)] as string[])
+      })
       .catch(() => {})
   }, [])
 
-  useEffect(() => {
-    if (merchant && recentMerchants.length > 0) {
-      const filtered = recentMerchants.filter((m) =>
-        m.merchant.toLowerCase().includes(merchant.toLowerCase())
+  // Filter merchants based on input
+  const filteredMerchants = merchant.trim()
+    ? recentMerchants.filter((m) =>
+        m.toLowerCase().includes(merchant.toLowerCase())
       )
-      setFilteredMerchants(filtered)
-    } else {
-      setFilteredMerchants(recentMerchants)
-    }
-  }, [merchant, recentMerchants])
+    : []
 
-  const selectMerchant = (suggestion: MerchantSuggestion) => {
-    setMerchant(suggestion.merchant)
+  const selectMerchant = (name: string) => {
+    setMerchant(name)
     setShowMerchantSuggestions(false)
-
-    // Auto-fill with previous items
-    const newItems = suggestion.lineItems.map((item) => ({
-      id: crypto.randomUUID(),
-      description: item.description,
-      amount: item.amount.toString(),
-      categoryId: item.categoryId,
-    }))
-    setLineItems(newItems)
-    setExpandedCategories(new Set(newItems.map((li) => li.categoryId)))
   }
 
   // Line items grouped by category
@@ -289,7 +306,7 @@ export function TransactionForm({ categories, transaction }: Props) {
               <button
                 type="button"
                 onClick={() => setDate(format(new Date(), 'yyyy-MM-dd'))}
-                className={`px-3 py-2 text-sm rounded-md border transition-colors ${
+                className={`px-3 py-2 text-sm rounded-md border transition-colors cursor-pointer ${
                   date === format(new Date(), 'yyyy-MM-dd')
                     ? 'bg-blue-100 dark:bg-blue-900 border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-300'
                     : 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'
@@ -304,7 +321,7 @@ export function TransactionForm({ categories, transaction }: Props) {
                   yesterday.setDate(yesterday.getDate() - 1)
                   setDate(format(yesterday, 'yyyy-MM-dd'))
                 }}
-                className={`px-3 py-2 text-sm rounded-md border transition-colors ${
+                className={`px-3 py-2 text-sm rounded-md border transition-colors cursor-pointer ${
                   date === format(new Date(Date.now() - 86400000), 'yyyy-MM-dd')
                     ? 'bg-blue-100 dark:bg-blue-900 border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-300'
                     : 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'
@@ -322,8 +339,10 @@ export function TransactionForm({ categories, transaction }: Props) {
               type="text"
               id="merchant"
               value={merchant}
-              onChange={(e) => setMerchant(e.target.value)}
-              onFocus={() => setShowMerchantSuggestions(true)}
+              onChange={(e) => {
+                setMerchant(e.target.value)
+                setShowMerchantSuggestions(true)
+              }}
               onBlur={() => setTimeout(() => setShowMerchantSuggestions(false), 200)}
               placeholder="e.g., Woolworths, Shell, Chemist"
               className="mt-1 block w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder:text-gray-400 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
@@ -332,20 +351,14 @@ export function TransactionForm({ categories, transaction }: Props) {
             />
             {showMerchantSuggestions && filteredMerchants.length > 0 && !transaction && (
               <div className="absolute z-10 mt-1 w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-lg max-h-60 overflow-y-auto">
-                <div className="px-3 py-2 text-xs text-gray-500 dark:text-gray-400 border-b border-gray-100 dark:border-gray-700">
-                  Recent merchants (click to auto-fill)
-                </div>
-                {filteredMerchants.slice(0, 8).map((m, index) => (
+                {filteredMerchants.slice(0, 8).map((name, index) => (
                   <button
                     key={index}
                     type="button"
-                    onClick={() => selectMerchant(m)}
-                    className="w-full text-left px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center justify-between"
+                    onClick={() => selectMerchant(name)}
+                    className="w-full text-left px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-700"
                   >
-                    <span className="font-medium text-gray-900 dark:text-white">{m.merchant}</span>
-                    <span className="text-xs text-gray-500 dark:text-gray-400">
-                      {m.lineItems.length} item{m.lineItems.length !== 1 ? 's' : ''}
-                    </span>
+                    <span className="text-gray-900 dark:text-white">{name}</span>
                   </button>
                 ))}
               </div>
@@ -382,7 +395,7 @@ export function TransactionForm({ categories, transaction }: Props) {
               <button
                 type="button"
                 onClick={() => setShowNotes(true)}
-                className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 transition-colors"
+                className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 transition-colors cursor-pointer"
               >
                 <Plus className="h-3 w-3" />
                 Add note
@@ -404,7 +417,7 @@ export function TransactionForm({ categories, transaction }: Props) {
         {/* Category icon buttons - always visible at top */}
         <div className="mb-4">
           <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-12 gap-3">
-            {categories.map((category) => {
+            {sortCategories(categories).map((category) => {
               const Icon = getCategoryIcon(category.name)
               const hasItems = getLineItemsForCategory(category.id).length > 0
               return (
@@ -412,7 +425,7 @@ export function TransactionForm({ categories, transaction }: Props) {
                   key={category.id}
                   type="button"
                   onClick={() => addLineItem(category.id)}
-                  className="flex flex-col items-center gap-1 group"
+                  className="flex flex-col items-center gap-1 group cursor-pointer"
                 >
                   <div
                     className={`w-12 h-12 rounded-full flex items-center justify-center transition-transform group-hover:scale-110 ${
@@ -420,7 +433,7 @@ export function TransactionForm({ categories, transaction }: Props) {
                     }`}
                     style={{ backgroundColor: category.color }}
                   >
-                    <Icon className="h-5 w-5 text-white" />
+                    <Icon className="h-6 w-6 text-white" />
                   </div>
                   <span className="text-xs text-gray-600 dark:text-gray-400 text-center leading-tight">
                     {category.name}
@@ -458,14 +471,14 @@ export function TransactionForm({ categories, transaction }: Props) {
         <button
           type="button"
           onClick={() => router.back()}
-          className="rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+          className="rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer"
         >
           Cancel
         </button>
         <button
           type="submit"
           disabled={isSubmitting || !merchant.trim() || lineItems.length === 0}
-          className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
         >
           <Save className="h-4 w-4" />
           {isSubmitting ? 'Saving...' : transaction ? 'Update' : 'Save Transaction'}
@@ -573,7 +586,7 @@ function CategoryAccordion({
               <button
                 type="button"
                 onClick={() => onDuplicateItem(item.id)}
-                className="p-1.5 text-gray-400 hover:text-blue-500 dark:hover:text-blue-400 transition-colors"
+                className="p-1.5 text-gray-400 hover:text-blue-500 dark:hover:text-blue-400 transition-colors cursor-pointer"
                 title="Duplicate item"
               >
                 <Copy className="h-3.5 w-3.5" />
@@ -581,7 +594,7 @@ function CategoryAccordion({
               <button
                 type="button"
                 onClick={() => onRemoveItem(item.id)}
-                className="p-1.5 text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors"
+                className="p-1.5 text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors cursor-pointer"
                 title="Remove item"
               >
                 <Trash2 className="h-3.5 w-3.5" />

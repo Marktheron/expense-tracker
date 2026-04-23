@@ -49,7 +49,6 @@ export function TransactionList({ initialTransactions, categories }: Props) {
   const [selectedMerchant, setSelectedMerchant] = useState<string>('')
   const [expandedTx, setExpandedTx] = useState<Set<string>>(new Set())
   const [isDeleting, setIsDeleting] = useState<string | null>(null)
-  const [pendingDelete, setPendingDelete] = useState<{ id: string; timeout: NodeJS.Timeout } | null>(null)
 
   // Get unique merchants sorted alphabetically
   const merchants = [...new Set(transactions.map((tx) => tx.merchant))].sort()
@@ -149,7 +148,7 @@ export function TransactionList({ initialTransactions, categories }: Props) {
 
   const matchingItems = getMatchingItems()
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     // Find the transaction to store for potential undo
     const txToDelete = transactions.find((tx) => tx.id === id)
     if (!txToDelete) return
@@ -157,28 +156,37 @@ export function TransactionList({ initialTransactions, categories }: Props) {
     // Remove from UI immediately
     setTransactions((prev) => prev.filter((tx) => tx.id !== id))
 
-    // Clear any existing pending delete
-    if (pendingDelete) {
-      clearTimeout(pendingDelete.timeout)
-    }
+    // Delete from database immediately
+    await fetch(`/api/transactions/${id}`, { method: 'DELETE' })
 
-    // Set up delayed actual delete
-    const timeout = setTimeout(async () => {
-      await fetch(`/api/transactions/${id}`, { method: 'DELETE' })
-      setPendingDelete(null)
-    }, 5000)
-
-    setPendingDelete({ id, timeout })
-
-    // Show toast with undo
+    // Show toast with undo option
     showToast('Transaction deleted', {
       label: 'Undo',
-      onClick: () => {
-        clearTimeout(timeout)
-        setPendingDelete(null)
-        setTransactions((prev) => [...prev, txToDelete].sort(
-          (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
-        ))
+      onClick: async () => {
+        // Re-create the transaction
+        const payload = {
+          date: txToDelete.date,
+          merchant: txToDelete.merchant,
+          notes: txToDelete.notes,
+          lineItems: txToDelete.lineItems.map((li) => ({
+            description: li.description,
+            amount: li.amount,
+            categoryId: li.category.id,
+          })),
+        }
+        const res = await fetch('/api/transactions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        })
+        if (res.ok) {
+          const newTx = await res.json()
+          // Add back to UI with the new ID
+          setTransactions((prev) => [...prev, {
+            ...txToDelete,
+            id: newTx.id,
+          }].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()))
+        }
       },
     })
   }
@@ -330,7 +338,7 @@ export function TransactionList({ initialTransactions, categories }: Props) {
             return (
               <div key={tx.id}>
                 <div
-                  className="flex items-center justify-between px-4 py-4 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"
+                  className="flex items-center justify-between px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"
                   onClick={() => toggleExpand(tx.id)}
                 >
                   <div className="flex items-center gap-4">
@@ -370,14 +378,14 @@ export function TransactionList({ initialTransactions, categories }: Props) {
                     <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
                       <Link
                         href={`/transactions/${tx.id}/edit`}
-                        className="p-2 text-gray-400 hover:text-blue-600 transition-colors"
+                        className="p-2 text-gray-400 hover:text-blue-600 transition-colors cursor-pointer"
                       >
                         <Edit className="h-4 w-4" />
                       </Link>
                       <button
                         onClick={() => handleDelete(tx.id)}
                         disabled={isDeleting === tx.id}
-                        className="p-2 text-gray-400 hover:text-red-600 transition-colors disabled:opacity-50"
+                        className="p-2 text-gray-400 hover:text-red-600 transition-colors disabled:opacity-50 cursor-pointer"
                       >
                         <Trash2 className="h-4 w-4" />
                       </button>
