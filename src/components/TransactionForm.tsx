@@ -606,9 +606,9 @@ function CategoryAccordion({
                 <button
                   type="button"
                   onClick={() => onToggleVitality(item.id)}
-                  className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all cursor-pointer ${
+                  className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold transition-all cursor-pointer ${
                     item.vitalityQualifying
-                      ? 'text-white shadow-md'
+                      ? 'text-white shadow-sm'
                       : 'bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-600'
                   }`}
                   style={item.vitalityQualifying ? { backgroundColor: '#EC1B5B' } : undefined}
