@@ -102,7 +102,7 @@ async function getStats() {
   }
 
   const topProducts = Object.values(productTotals)
-    .sort((a, b) => b.total - a.total)
+    .sort((a, b) => b.count - a.count)
     .slice(0, 10)
 
   // Line items count this month

@@ -331,7 +331,7 @@ export function Dashboard({ stats }: { stats: Stats }) {
               </h2>
             </div>
             <div className="divide-y divide-gray-100 dark:divide-gray-700">
-              {stats.topProducts.slice(0, 5).map((product, index) => (
+              {stats.topProducts.slice(0, 10).map((product, index) => (
                 <div
                   key={index}
                   className="flex items-center justify-between px-4 py-2"
