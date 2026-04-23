@@ -327,6 +327,30 @@ export function TransactionForm({ categories, transaction }: Props) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
+      {/* Header with title and action buttons */}
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+          {transaction ? 'Edit Expense' : 'Add Expense'}
+        </h1>
+        <div className="flex gap-3">
+          <button
+            type="button"
+            onClick={() => router.back()}
+            className="rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            disabled={isSubmitting || !merchant.trim() || lineItems.length === 0}
+            className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
+          >
+            <Save className="h-4 w-4" />
+            {isSubmitting ? 'Saving...' : transaction ? 'Update' : 'Save'}
+          </button>
+        </div>
+      </div>
+
       {/* Transaction Details */}
       <div className="rounded-lg bg-white dark:bg-gray-800 p-6 shadow-sm border border-gray-200 dark:border-gray-700">
         <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">

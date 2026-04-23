@@ -49,7 +49,6 @@ export default async function EditTransactionPage({ params }: Props) {
 
   return (
     <div className="max-w-3xl mx-auto">
-      <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">Edit Transaction</h1>
       <TransactionForm categories={categories} transaction={formattedTransaction} />
     </div>
   )

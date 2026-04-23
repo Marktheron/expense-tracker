@@ -28,9 +28,16 @@ interface Transaction {
   lineItems: LineItem[]
 }
 
+interface MerchantColor {
+  id: string
+  name: string
+  color: string
+}
+
 interface Props {
   initialTransactions: Transaction[]
   categories: Category[]
+  merchantColors: MerchantColor[]
 }
 
 function formatCurrency(amount: number) {
@@ -40,37 +47,24 @@ function formatCurrency(amount: number) {
   }).format(amount)
 }
 
-// Merchant brand colors - add your merchants here
-const merchantColors: Record<string, string> = {
-  'Checkers': '#E31837',
-  'Woolworths': '#1D1D1B',
-  'Pick n Pay': '#E31C23',
-  'Spar': '#E30613',
-  'Dischem': '#00A651',
-  'Clicks': '#0072BC',
-  'Shell': '#FFD500',
-  'Engen': '#FF6B00',
-  'BP': '#009639',
-  'Sasol': '#0033A0',
-}
-
-function getMerchantColor(merchant: string): string {
-  // Check for exact match first
-  if (merchantColors[merchant]) return merchantColors[merchant]
-  // Check if merchant name contains any known merchant
-  const lowerMerchant = merchant.toLowerCase()
-  for (const [name, color] of Object.entries(merchantColors)) {
-    if (lowerMerchant.includes(name.toLowerCase())) return color
-  }
-  // Default grey
-  return '#6B7280'
-}
-
 function getMerchantInitial(merchant: string): string {
   return merchant.charAt(0).toUpperCase()
 }
 
-export function TransactionList({ initialTransactions, categories }: Props) {
+export function TransactionList({ initialTransactions, categories, merchantColors }: Props) {
+  // Build merchant color lookup from database
+  const getMerchantColor = (merchant: string): string => {
+    // Check for exact match first
+    const exact = merchantColors.find((m) => m.name === merchant)
+    if (exact) return exact.color
+    // Check if merchant name contains any known merchant
+    const lowerMerchant = merchant.toLowerCase()
+    for (const mc of merchantColors) {
+      if (lowerMerchant.includes(mc.name.toLowerCase())) return mc.color
+    }
+    // Default grey
+    return '#6B7280'
+  }
   const router = useRouter()
   const { showToast } = useToast()
   const [transactions, setTransactions] = useState(initialTransactions)
@@ -365,8 +359,10 @@ export function TransactionList({ initialTransactions, categories }: Props) {
 
             const categoryGroups = groupByCategory(displayLineItems)
 
+            const isToday = new Date(tx.date).toDateString() === new Date().toDateString()
+
             return (
-              <div key={tx.id}>
+              <div key={tx.id} className={isToday ? 'border-l-4 border-l-gray-400 dark:border-l-gray-500' : ''}>
                 <div
                   className="flex items-center justify-between px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"
                   onClick={() => toggleExpand(tx.id)}

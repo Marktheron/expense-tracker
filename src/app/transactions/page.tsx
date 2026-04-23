@@ -2,7 +2,7 @@ import { prisma } from '@/lib/db'
 import { TransactionList } from '@/components/TransactionList'
 
 export default async function TransactionsPage() {
-  const [rawTransactions, rawCategories] = await Promise.all([
+  const [rawTransactions, rawCategories, merchantColors] = await Promise.all([
     prisma.transaction.findMany({
       include: {
         lineItems: {
@@ -15,6 +15,7 @@ export default async function TransactionsPage() {
     prisma.category.findMany({
       orderBy: { name: 'asc' },
     }),
+    prisma.merchantColor.findMany(),
   ])
 
   const transactions = rawTransactions.map((tx) => ({
@@ -46,6 +47,7 @@ export default async function TransactionsPage() {
       <TransactionList
         initialTransactions={transactions}
         categories={categories}
+        merchantColors={merchantColors}
       />
     </div>
   )

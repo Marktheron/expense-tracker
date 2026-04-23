@@ -66,15 +66,18 @@ async function getStats() {
     dailySpending[dateKey] = (dailySpending[dateKey] || 0) + txTotal
   }
 
-  const recentTransactions = await prisma.transaction.findMany({
-    include: {
-      lineItems: {
-        include: { category: true },
+  const [recentTransactions, merchantColors] = await Promise.all([
+    prisma.transaction.findMany({
+      include: {
+        lineItems: {
+          include: { category: true },
+        },
       },
-    },
-    orderBy: { date: 'desc' },
-    take: 7,
-  })
+      orderBy: { date: 'desc' },
+      take: 7,
+    }),
+    prisma.merchantColor.findMany(),
+  ])
 
   // Top products this month
   const allLineItems = await prisma.lineItem.findMany({
@@ -233,6 +236,7 @@ async function getStats() {
       dischem: { total: dischemTotal, cashback: dischemCashback },
       totalCashback: checkersCashback + dischemCashback,
     },
+    merchantColors,
   }
 }
 

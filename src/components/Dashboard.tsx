@@ -21,6 +21,12 @@ interface Category {
   color: string
 }
 
+interface MerchantColor {
+  id: string
+  name: string
+  color: string
+}
+
 interface LineItem {
   id: string
   description: string
@@ -94,6 +100,7 @@ interface Stats {
   monthComparison: MonthComparison
   spendingPace: SpendingPace
   vitality: Vitality
+  merchantColors: MerchantColor[]
 }
 
 function formatCurrency(amount: number) {
@@ -103,34 +110,20 @@ function formatCurrency(amount: number) {
   }).format(amount)
 }
 
-// Merchant brand colors
-const merchantColors: Record<string, string> = {
-  'Checkers': '#E31837',
-  'Woolworths': '#1D1D1B',
-  'Pick n Pay': '#E31C23',
-  'Spar': '#E30613',
-  'Dischem': '#00A651',
-  'Clicks': '#0072BC',
-  'Shell': '#FFD500',
-  'Engen': '#FF6B00',
-  'BP': '#009639',
-  'Sasol': '#0033A0',
-}
-
-function getMerchantColor(merchant: string): string {
-  if (merchantColors[merchant]) return merchantColors[merchant]
-  const lowerMerchant = merchant.toLowerCase()
-  for (const [name, color] of Object.entries(merchantColors)) {
-    if (lowerMerchant.includes(name.toLowerCase())) return color
-  }
-  return '#6B7280'
-}
-
 function getMerchantInitial(merchant: string): string {
   return merchant.charAt(0).toUpperCase()
 }
 
 export function Dashboard({ stats }: { stats: Stats }) {
+  const getMerchantColor = (merchant: string): string => {
+    const exact = stats.merchantColors.find((m) => m.name === merchant)
+    if (exact) return exact.color
+    const lowerMerchant = merchant.toLowerCase()
+    for (const mc of stats.merchantColors) {
+      if (lowerMerchant.includes(mc.name.toLowerCase())) return mc.color
+    }
+    return '#6B7280'
+  }
   const getTransactionTotal = (tx: Transaction) =>
     tx.lineItems.reduce((sum, item) => sum + item.amount, 0)
 
@@ -170,9 +163,9 @@ export function Dashboard({ stats }: { stats: Stats }) {
                     : 'text-green-600'
                 }`}>
                   {stats.monthComparison.thisMonth > stats.monthComparison.lastMonth ? (
-                    <ArrowUp className="h-3 w-3" strokeWidth={3} />
+                    <ArrowUp className="h-4 w-4" strokeWidth={3} />
                   ) : (
-                    <ArrowDown className="h-3 w-3" strokeWidth={3} />
+                    <ArrowDown className="h-4 w-4" strokeWidth={3} />
                   )}
                   {formatCurrency(Math.abs(stats.monthComparison.thisMonth - stats.monthComparison.lastMonth))}
                   {' '}vs {stats.monthComparison.lastMonthName}
@@ -199,9 +192,9 @@ export function Dashboard({ stats }: { stats: Stats }) {
                       : 'text-green-600'
                   }`}>
                     {stats.spendingPace.thisMonth > stats.spendingPace.lastMonthSamePoint ? (
-                      <ArrowUp className="h-3 w-3" strokeWidth={3} />
+                      <ArrowUp className="h-4 w-4" strokeWidth={3} />
                     ) : (
-                      <ArrowDown className="h-3 w-3" strokeWidth={3} />
+                      <ArrowDown className="h-4 w-4" strokeWidth={3} />
                     )}
                     {formatCurrency(Math.abs(stats.spendingPace.thisMonth - stats.spendingPace.lastMonthSamePoint))}
                     {' '}by day {stats.spendingPace.dayOfMonth}
@@ -350,7 +343,7 @@ export function Dashboard({ stats }: { stats: Stats }) {
                       <span className={`text-sm font-medium flex items-center gap-1 ${
                         isUp ? 'text-red-600' : 'text-green-600'
                       }`}>
-                        {isUp ? <ArrowUp className="h-3 w-3" strokeWidth={3} /> : <ArrowDown className="h-3 w-3" strokeWidth={3} />}
+                        {isUp ? <ArrowUp className="h-4 w-4" strokeWidth={3} /> : <ArrowDown className="h-4 w-4" strokeWidth={3} />}
                         {isUp ? '+' : ''}{formatCurrency(diff)}
                       </span>
                     </div>
