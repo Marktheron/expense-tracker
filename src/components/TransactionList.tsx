@@ -4,7 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { format } from 'date-fns'
-import { Search, Filter, ChevronDown, ChevronRight, Trash2, Edit, PlusCircle, StickyNote, X, Download, Store } from 'lucide-react'
+import { Search, Filter, ChevronDown, ChevronRight, Trash2, Edit, PlusCircle, NotepadText, X, Download, Store } from 'lucide-react'
 import { useToast } from './Toast'
 
 interface Category {
@@ -38,6 +38,36 @@ function formatCurrency(amount: number) {
     style: 'currency',
     currency: 'ZAR',
   }).format(amount)
+}
+
+// Merchant brand colors - add your merchants here
+const merchantColors: Record<string, string> = {
+  'Checkers': '#E31837',
+  'Woolworths': '#1D1D1B',
+  'Pick n Pay': '#E31C23',
+  'Spar': '#E30613',
+  'Dischem': '#00A651',
+  'Clicks': '#0072BC',
+  'Shell': '#FFD500',
+  'Engen': '#FF6B00',
+  'BP': '#009639',
+  'Sasol': '#0033A0',
+}
+
+function getMerchantColor(merchant: string): string {
+  // Check for exact match first
+  if (merchantColors[merchant]) return merchantColors[merchant]
+  // Check if merchant name contains any known merchant
+  const lowerMerchant = merchant.toLowerCase()
+  for (const [name, color] of Object.entries(merchantColors)) {
+    if (lowerMerchant.includes(name.toLowerCase())) return color
+  }
+  // Default grey
+  return '#6B7280'
+}
+
+function getMerchantInitial(merchant: string): string {
+  return merchant.charAt(0).toUpperCase()
 }
 
 export function TransactionList({ initialTransactions, categories }: Props) {
@@ -341,17 +371,23 @@ export function TransactionList({ initialTransactions, categories }: Props) {
                   className="flex items-center justify-between px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"
                   onClick={() => toggleExpand(tx.id)}
                 >
-                  <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-3">
                     {isExpanded ? (
                       <ChevronDown className="h-4 w-4 text-gray-400 dark:text-gray-500" />
                     ) : (
                       <ChevronRight className="h-4 w-4 text-gray-400 dark:text-gray-500" />
                     )}
+                    <div
+                      className="h-9 w-9 rounded-lg flex items-center justify-center text-lg font-bold text-white flex-shrink-0"
+                      style={{ backgroundColor: getMerchantColor(tx.merchant) }}
+                    >
+                      {getMerchantInitial(tx.merchant)}
+                    </div>
                     <div>
                       <p className="font-medium text-gray-900 dark:text-white flex items-center gap-1.5">
                         {tx.merchant}
                         {tx.notes && (
-                          <StickyNote className="h-3.5 w-3.5 text-gray-400 dark:text-gray-500" title={tx.notes} />
+                          <NotepadText className="h-3.5 w-3.5 text-gray-400 dark:text-gray-500" title={tx.notes} />
                         )}
                       </p>
                       <p className="text-sm text-gray-500 dark:text-gray-400">
@@ -362,8 +398,11 @@ export function TransactionList({ initialTransactions, categories }: Props) {
                       {categoryGroups.slice(0, 3).map((group) => (
                         <div
                           key={group.category.id}
-                          className="h-8 w-8 rounded-full border-2 border-white dark:border-gray-800 flex items-center justify-center text-xs font-medium text-white"
-                          style={{ backgroundColor: group.category.color }}
+                          className="h-6 w-6 rounded-full flex items-center justify-center text-xs font-extrabold"
+                          style={{
+                            backgroundColor: group.category.color + '1A',
+                            color: group.category.color
+                          }}
                           title={group.category.name}
                         >
                           {group.items.length}

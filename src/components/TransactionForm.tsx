@@ -129,9 +129,9 @@ export function TransactionForm({ categories, transaction }: Props) {
   const [recentMerchants, setRecentMerchants] = useState<string[]>([])
   const [showMerchantSuggestions, setShowMerchantSuggestions] = useState(false)
 
-  // Vitality tracking
+  // Vitality tracking (Checkers and Dischem)
   const [vitalityProducts, setVitalityProducts] = useState<string[]>([])
-  const isCheckers = merchant.toLowerCase().includes('checkers')
+  const isVitalityMerchant = merchant.toLowerCase().includes('checkers') || merchant.toLowerCase().includes('dischem')
 
   useEffect(() => {
     // Fetch recent merchants on mount
@@ -210,20 +210,27 @@ export function TransactionForm({ categories, transaction }: Props) {
 
   const updateLineItem = (id: string, field: 'description' | 'amount', value: string) => {
     setLineItems((prev) =>
+      prev.map((item) =>
+        item.id === id ? { ...item, [field]: value } : item
+      )
+    )
+  }
+
+  // Check for vitality product on blur (when leaving description field)
+  const checkVitalityOnBlur = (id: string) => {
+    if (!isVitalityMerchant) return
+    setLineItems((prev) =>
       prev.map((item) => {
         if (item.id !== id) return item
-        const updated = { ...item, [field]: value }
-        // Auto-detect vitality products when description changes at Checkers
-        if (field === 'description' && isCheckers) {
-          const normalizedValue = value.toLowerCase().trim()
-          const isVitalityProduct = vitalityProducts.some(
-            (p) => p === normalizedValue || normalizedValue.includes(p) || p.includes(normalizedValue)
-          )
-          if (isVitalityProduct && !item.vitalityQualifying) {
-            updated.vitalityQualifying = true
-          }
+        const normalizedValue = item.description.toLowerCase().trim()
+        if (!normalizedValue) return item
+        const isVitalityProduct = vitalityProducts.some(
+          (p) => p === normalizedValue || normalizedValue.includes(p) || p.includes(normalizedValue)
+        )
+        if (isVitalityProduct && !item.vitalityQualifying) {
+          return { ...item, vitalityQualifying: true }
         }
-        return updated
+        return item
       })
     )
   }
@@ -495,9 +502,10 @@ export function TransactionForm({ categories, transaction }: Props) {
                 onRemoveItem={removeLineItem}
                 onDuplicateItem={duplicateLineItem}
                 onToggleVitality={toggleVitality}
+                onBlurVitality={checkVitalityOnBlur}
                 total={getCategoryTotal(category.id)}
                 lastAddedItemId={lastAddedItemId}
-                showVitality={isCheckers}
+                showVitality={isVitalityMerchant}
               />
             ))}
           </div>
@@ -536,6 +544,7 @@ interface CategoryAccordionProps {
   onRemoveItem: (id: string) => void
   onDuplicateItem: (id: string) => void
   onToggleVitality: (id: string) => void
+  onBlurVitality: (id: string) => void
   total: number
   lastAddedItemId: string | null
   showVitality: boolean
@@ -551,6 +560,7 @@ function CategoryAccordion({
   onRemoveItem,
   onDuplicateItem,
   onToggleVitality,
+  onBlurVitality,
   total,
   lastAddedItemId,
   showVitality,
@@ -622,6 +632,7 @@ function CategoryAccordion({
                 ref={(el) => { descriptionRefs.current[item.id] = el }}
                 value={item.description}
                 onChange={(e) => onUpdateItem(item.id, 'description', e.target.value)}
+                onBlur={() => onBlurVitality(item.id)}
                 placeholder="Item description"
                 className="flex-1 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder:text-gray-400 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
               />

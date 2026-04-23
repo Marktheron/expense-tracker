@@ -48,7 +48,7 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className="min-h-full bg-gray-50 dark:bg-gray-950">
+      <body className="min-h-full bg-gray-100 dark:bg-gray-950">
         <ToastProvider>
           <KeyboardShortcuts />
           <Navigation />

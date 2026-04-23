@@ -73,7 +73,7 @@ async function getStats() {
       },
     },
     orderBy: { date: 'desc' },
-    take: 5,
+    take: 7,
   })
 
   // Top products this month
@@ -108,20 +108,31 @@ async function getStats() {
   // Line items count this month
   const lineItemsCount = allLineItems.length
 
-  // Vitality cashback (25% of qualifying items at Checkers)
-  const vitalityItems = await prisma.lineItem.findMany({
-    where: {
-      vitalityQualifying: true,
-      transaction: {
-        date: dateFilter,
-        merchant: {
-          contains: 'Checkers',
+  // Vitality cashback (25% of qualifying items at Checkers and Dischem)
+  const [checkersItems, dischemItems] = await Promise.all([
+    prisma.lineItem.findMany({
+      where: {
+        vitalityQualifying: true,
+        transaction: {
+          date: dateFilter,
+          merchant: { contains: 'Checkers' },
         },
       },
-    },
-  })
-  const vitalityTotal = vitalityItems.reduce((sum, item) => sum + item.amount, 0)
-  const vitalityCashback = vitalityTotal * 0.25
+    }),
+    prisma.lineItem.findMany({
+      where: {
+        vitalityQualifying: true,
+        transaction: {
+          date: dateFilter,
+          merchant: { contains: 'Dischem' },
+        },
+      },
+    }),
+  ])
+  const checkersTotal = checkersItems.reduce((sum, item) => sum + item.amount, 0)
+  const dischemTotal = dischemItems.reduce((sum, item) => sum + item.amount, 0)
+  const checkersCashback = checkersTotal * 0.25
+  const dischemCashback = dischemTotal * 0.25
 
   // Last month totals for comparison
   const lastMonthTotal = await prisma.lineItem.aggregate({
@@ -218,8 +229,9 @@ async function getStats() {
     topProducts,
     monthComparison,
     vitality: {
-      qualifyingTotal: vitalityTotal,
-      cashback: vitalityCashback,
+      checkers: { total: checkersTotal, cashback: checkersCashback },
+      dischem: { total: dischemTotal, cashback: dischemCashback },
+      totalCashback: checkersCashback + dischemCashback,
     },
   }
 }
