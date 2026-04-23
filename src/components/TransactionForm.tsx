@@ -37,6 +37,7 @@ interface LineItemInput {
   description: string
   amount: string
   categoryId: string
+  vitalityQualifying: boolean
 }
 
 interface ExistingTransaction {
@@ -49,6 +50,7 @@ interface ExistingTransaction {
     description: string
     amount: number
     categoryId: string
+    vitalityQualifying: boolean
   }[]
 }
 
@@ -127,6 +129,10 @@ export function TransactionForm({ categories, transaction }: Props) {
   const [recentMerchants, setRecentMerchants] = useState<string[]>([])
   const [showMerchantSuggestions, setShowMerchantSuggestions] = useState(false)
 
+  // Vitality tracking
+  const [vitalityProducts, setVitalityProducts] = useState<string[]>([])
+  const isCheckers = merchant.toLowerCase().includes('checkers')
+
   useEffect(() => {
     // Fetch recent merchants on mount
     fetch('/api/merchants')
@@ -136,6 +142,12 @@ export function TransactionForm({ categories, transaction }: Props) {
         const names = data.map((m: { merchant: string }) => m.merchant)
         setRecentMerchants([...new Set(names)] as string[])
       })
+      .catch(() => {})
+
+    // Fetch vitality products (remembered)
+    fetch('/api/vitality-products')
+      .then((res) => res.json())
+      .then(setVitalityProducts)
       .catch(() => {})
   }, [])
 
@@ -157,6 +169,7 @@ export function TransactionForm({ categories, transaction }: Props) {
     description: li.description,
     amount: li.amount.toString(),
     categoryId: li.categoryId,
+    vitalityQualifying: li.vitalityQualifying || false,
   })) || []
 
   const [lineItems, setLineItems] = useState<LineItemInput[]>(initialLineItems)
@@ -188,6 +201,7 @@ export function TransactionForm({ categories, transaction }: Props) {
         description: '',
         amount: '',
         categoryId,
+        vitalityQualifying: false,
       },
     ])
     setExpandedCategories((prev) => new Set([...prev, categoryId]))
@@ -196,8 +210,28 @@ export function TransactionForm({ categories, transaction }: Props) {
 
   const updateLineItem = (id: string, field: 'description' | 'amount', value: string) => {
     setLineItems((prev) =>
+      prev.map((item) => {
+        if (item.id !== id) return item
+        const updated = { ...item, [field]: value }
+        // Auto-detect vitality products when description changes at Checkers
+        if (field === 'description' && isCheckers) {
+          const normalizedValue = value.toLowerCase().trim()
+          const isVitalityProduct = vitalityProducts.some(
+            (p) => p === normalizedValue || normalizedValue.includes(p) || p.includes(normalizedValue)
+          )
+          if (isVitalityProduct && !item.vitalityQualifying) {
+            updated.vitalityQualifying = true
+          }
+        }
+        return updated
+      })
+    )
+  }
+
+  const toggleVitality = (id: string) => {
+    setLineItems((prev) =>
       prev.map((item) =>
-        item.id === id ? { ...item, [field]: value } : item
+        item.id === id ? { ...item, vitalityQualifying: !item.vitalityQualifying } : item
       )
     )
   }
@@ -217,6 +251,7 @@ export function TransactionForm({ categories, transaction }: Props) {
         description: item.description,
         amount: item.amount,
         categoryId: item.categoryId,
+        vitalityQualifying: item.vitalityQualifying,
       },
     ])
     setLastAddedItemId(newId)
@@ -258,6 +293,7 @@ export function TransactionForm({ categories, transaction }: Props) {
           description: item.description.trim(),
           amount: parseFloat(item.amount),
           categoryId: item.categoryId,
+          vitalityQualifying: item.vitalityQualifying,
         })),
     }
 
@@ -458,8 +494,10 @@ export function TransactionForm({ categories, transaction }: Props) {
                 onUpdateItem={updateLineItem}
                 onRemoveItem={removeLineItem}
                 onDuplicateItem={duplicateLineItem}
+                onToggleVitality={toggleVitality}
                 total={getCategoryTotal(category.id)}
                 lastAddedItemId={lastAddedItemId}
+                showVitality={isCheckers}
               />
             ))}
           </div>
@@ -497,8 +535,10 @@ interface CategoryAccordionProps {
   onUpdateItem: (id: string, field: 'description' | 'amount', value: string) => void
   onRemoveItem: (id: string) => void
   onDuplicateItem: (id: string) => void
+  onToggleVitality: (id: string) => void
   total: number
   lastAddedItemId: string | null
+  showVitality: boolean
 }
 
 function CategoryAccordion({
@@ -510,8 +550,10 @@ function CategoryAccordion({
   onUpdateItem,
   onRemoveItem,
   onDuplicateItem,
+  onToggleVitality,
   total,
   lastAddedItemId,
+  showVitality,
 }: CategoryAccordionProps) {
   const Icon = getCategoryIcon(category.name)
   const descriptionRefs = useRef<Record<string, HTMLInputElement | null>>({})
@@ -560,6 +602,21 @@ function CategoryAccordion({
         <div className="p-4 space-y-3 bg-white dark:bg-gray-800">
           {lineItems.map((item) => (
             <div key={item.id} className="flex items-center gap-3">
+              {showVitality && (
+                <button
+                  type="button"
+                  onClick={() => onToggleVitality(item.id)}
+                  className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all cursor-pointer ${
+                    item.vitalityQualifying
+                      ? 'text-white shadow-md'
+                      : 'bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-600'
+                  }`}
+                  style={item.vitalityQualifying ? { backgroundColor: '#EC1B5B' } : undefined}
+                  title={item.vitalityQualifying ? 'Vitality qualifying (click to remove)' : 'Mark as Vitality qualifying'}
+                >
+                  V
+                </button>
+              )}
               <input
                 type="text"
                 ref={(el) => { descriptionRefs.current[item.id] = el }}

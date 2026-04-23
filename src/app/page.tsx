@@ -108,6 +108,21 @@ async function getStats() {
   // Line items count this month
   const lineItemsCount = allLineItems.length
 
+  // Vitality cashback (25% of qualifying items at Checkers)
+  const vitalityItems = await prisma.lineItem.findMany({
+    where: {
+      vitalityQualifying: true,
+      transaction: {
+        date: dateFilter,
+        merchant: {
+          contains: 'Checkers',
+        },
+      },
+    },
+  })
+  const vitalityTotal = vitalityItems.reduce((sum, item) => sum + item.amount, 0)
+  const vitalityCashback = vitalityTotal * 0.25
+
   // Last month totals for comparison
   const lastMonthTotal = await prisma.lineItem.aggregate({
     where: {
@@ -202,6 +217,10 @@ async function getStats() {
     currentMonth: now.toLocaleString('default', { month: 'long', year: 'numeric' }),
     topProducts,
     monthComparison,
+    vitality: {
+      qualifyingTotal: vitalityTotal,
+      cashback: vitalityCashback,
+    },
   }
 }
 

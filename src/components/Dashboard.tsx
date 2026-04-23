@@ -72,6 +72,11 @@ interface SpendingPace {
   dayOfMonth: number
 }
 
+interface Vitality {
+  qualifyingTotal: number
+  cashback: number
+}
+
 interface Stats {
   totalSpending: number
   categoryBreakdown: CategoryBreakdown[]
@@ -83,6 +88,7 @@ interface Stats {
   topProducts: TopProduct[]
   monthComparison: MonthComparison
   spendingPace: SpendingPace
+  vitality: Vitality
 }
 
 function formatCurrency(amount: number) {
@@ -114,7 +120,7 @@ export function Dashboard({ stats }: { stats: Stats }) {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div className="rounded-lg bg-white dark:bg-gray-800 p-6 shadow-sm border border-gray-200 dark:border-gray-700">
           <div className="flex items-center gap-3">
             <div className="rounded-full bg-blue-100 dark:bg-blue-900 p-2">
@@ -184,6 +190,24 @@ export function Dashboard({ stats }: { stats: Stats }) {
                 </>
               ) : (
                 <p className="text-2xl font-bold text-gray-900 dark:text-white">—</p>
+              )}
+            </div>
+          </div>
+        </div>
+        <div className="rounded-lg bg-white dark:bg-gray-800 p-6 shadow-sm border border-gray-200 dark:border-gray-700">
+          <div className="flex items-center gap-3">
+            <div className="rounded-full p-2" style={{ backgroundColor: '#EC1B5B20' }}>
+              <span className="flex items-center justify-center w-5 h-5 font-bold text-sm" style={{ color: '#EC1B5B' }}>V</span>
+            </div>
+            <div className="flex-1">
+              <p className="text-sm text-gray-500 dark:text-gray-400">Vitality Cashback</p>
+              <p className="text-2xl font-bold" style={{ color: '#EC1B5B' }}>
+                {formatCurrency(stats.vitality.cashback)}
+              </p>
+              {stats.vitality.qualifyingTotal > 0 && (
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  25% of {formatCurrency(stats.vitality.qualifyingTotal)}
+                </p>
               )}
             </div>
           </div>

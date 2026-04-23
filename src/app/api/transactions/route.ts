@@ -59,10 +59,11 @@ export async function POST(request: Request) {
       merchant: body.merchant,
       notes: body.notes || null,
       lineItems: {
-        create: body.lineItems.map((item: { description: string; amount: number; categoryId: string }) => ({
+        create: body.lineItems.map((item: { description: string; amount: number; categoryId: string; vitalityQualifying?: boolean }) => ({
           description: item.description,
           amount: item.amount,
           categoryId: item.categoryId,
+          vitalityQualifying: item.vitalityQualifying || false,
         })),
       },
     },
