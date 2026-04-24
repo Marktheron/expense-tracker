@@ -59,11 +59,39 @@ async function getStats() {
     orderBy: { date: 'asc' },
   })
 
-  const dailySpending: Record<string, number> = {}
-  for (const tx of transactions) {
-    const dateKey = tx.date.toISOString().split('T')[0]
-    const txTotal = tx.lineItems.reduce((sum, item) => sum + item.amount, 0)
-    dailySpending[dateKey] = (dailySpending[dateKey] || 0) + txTotal
+  // Daily spending with category breakdown
+  const dailySpendingMap: Record<string, { amount: number; categories: Record<string, { categoryId: string; categoryName: string; categoryColor: string; amount: number }> }> = {}
+
+  // Get all line items with their transaction dates and categories
+  const lineItemsWithDates = await prisma.lineItem.findMany({
+    where: {
+      transaction: {
+        date: dateFilter,
+      },
+    },
+    include: {
+      category: true,
+      transaction: { select: { date: true } },
+    },
+  })
+
+  for (const item of lineItemsWithDates) {
+    const dateKey = item.transaction.date.toISOString().split('T')[0]
+    if (!dailySpendingMap[dateKey]) {
+      dailySpendingMap[dateKey] = { amount: 0, categories: {} }
+    }
+    dailySpendingMap[dateKey].amount += item.amount
+
+    const catId = item.categoryId
+    if (!dailySpendingMap[dateKey].categories[catId]) {
+      dailySpendingMap[dateKey].categories[catId] = {
+        categoryId: catId,
+        categoryName: item.category.name,
+        categoryColor: item.category.color,
+        amount: 0,
+      }
+    }
+    dailySpendingMap[dateKey].categories[catId].amount += item.amount
   }
 
   const [recentTransactions, merchantColors] = await Promise.all([
@@ -219,10 +247,21 @@ async function getStats() {
       lastMonthSamePoint: lastMonthPaceTotal._sum.amount || 0,
       dayOfMonth,
     },
-    dailySpending: Object.entries(dailySpending).map(([date, amount]) => ({
-      date,
-      amount,
-    })),
+    dailySpending: Object.entries(dailySpendingMap)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([date, data]) => {
+        const catEntries = Object.values(data.categories)
+        const flatCats: Record<string, number> = {}
+        catEntries.forEach(cat => {
+          flatCats[`cat_${cat.categoryId}`] = cat.amount
+        })
+        return {
+          date,
+          amount: data.amount,
+          categories: catEntries,
+          ...flatCats,
+        }
+      }),
     recentTransactions: recentTransactions.map((tx) => ({
       id: tx.id,
       date: tx.date.toISOString(),

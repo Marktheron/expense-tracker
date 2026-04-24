@@ -47,9 +47,17 @@ interface CategoryBreakdown {
   total: number
 }
 
+interface DailySpendingCategory {
+  categoryId: string
+  categoryName: string
+  categoryColor: string
+  amount: number
+}
+
 interface DailySpending {
   date: string
   amount: number
+  categories: DailySpendingCategory[]
 }
 
 interface TopProduct {
@@ -252,12 +260,33 @@ export function Dashboard({ stats }: { stats: Stats }) {
                   tickFormatter={(date) => format(new Date(date), 'd MMM')}
                   fontSize={12}
                 />
-                <YAxis fontSize={12} tickFormatter={(v) => `$${v}`} />
+                <YAxis fontSize={12} tickFormatter={(v) => `R${v}`} />
                 <Tooltip
-                  formatter={(value) => formatCurrency(Number(value))}
+                  formatter={(value, name) => [formatCurrency(Number(value)), name]}
                   labelFormatter={(date) => format(new Date(String(date)), 'PPP')}
+                  contentStyle={{ borderRadius: '10px' }}
+                  cursor={{ fill: 'rgba(156, 163, 175, 0.15)' }}
                 />
-                <Bar dataKey="amount" fill="#3B82F6" radius={[4, 4, 0, 0]} />
+                {(() => {
+                  // Get unique categories from all daily spending data
+                  const categorySet = new Map<string, { name: string; color: string }>()
+                  stats.dailySpending.forEach(day => {
+                    day.categories.forEach(cat => {
+                      if (!categorySet.has(cat.categoryId)) {
+                        categorySet.set(cat.categoryId, { name: cat.categoryName, color: cat.categoryColor })
+                      }
+                    })
+                  })
+                  return Array.from(categorySet.entries()).map(([id, cat]) => (
+                    <Bar
+                      key={id}
+                      dataKey={`cat_${id}`}
+                      name={cat.name}
+                      stackId="stack"
+                      fill={cat.color}
+                    />
+                  ))
+                })()}
               </BarChart>
             </ResponsiveContainer>
           ) : (
@@ -274,7 +303,7 @@ export function Dashboard({ stats }: { stats: Stats }) {
           </h2>
           {stats.categoryBreakdown.length > 0 ? (
             <div className="flex items-center gap-4">
-              <ResponsiveContainer width="50%" height={200}>
+              <ResponsiveContainer width="55%" height={240}>
                 <PieChart>
                   <Pie
                     data={stats.categoryBreakdown}
@@ -282,14 +311,14 @@ export function Dashboard({ stats }: { stats: Stats }) {
                     nameKey="category.name"
                     cx="50%"
                     cy="50%"
-                    innerRadius={40}
-                    outerRadius={80}
+                    innerRadius={45}
+                    outerRadius={115}
                   >
                     {stats.categoryBreakdown.map((entry, index) => (
                       <Cell key={index} fill={entry.category.color} />
                     ))}
                   </Pie>
-                  <Tooltip formatter={(value) => formatCurrency(Number(value))} />
+                  <Tooltip formatter={(value) => formatCurrency(Number(value))} contentStyle={{ borderRadius: '10px' }} />
                 </PieChart>
               </ResponsiveContainer>
               <div className="flex-1 space-y-2">
@@ -317,14 +346,14 @@ export function Dashboard({ stats }: { stats: Stats }) {
         </div>
       </div>
 
-      {/* Bottom 3-column grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {/* Bottom 4-column grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         {/* Monthly Comparison */}
         {stats.monthComparison.categoryChanges.length > 0 && (
           <div className="rounded-lg bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700">
             <div className="border-b border-gray-200 dark:border-gray-700 px-6 py-4">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                vs {stats.monthComparison.lastMonthName}
+                Compared to Last Month
               </h2>
             </div>
             <div className="divide-y divide-gray-100 dark:divide-gray-700">
@@ -374,7 +403,6 @@ export function Dashboard({ stats }: { stats: Stats }) {
                   className="flex items-center justify-between px-4 py-2"
                 >
                   <div className="flex items-center gap-2">
-                    <span className="text-sm text-gray-400 dark:text-gray-500 w-4">{index + 1}.</span>
                     <div
                       className="h-3 w-3 rounded-full"
                       style={{ backgroundColor: product.category.color }}
@@ -404,7 +432,7 @@ export function Dashboard({ stats }: { stats: Stats }) {
             <div className="p-4 space-y-1">
               {(() => {
                 const maxTotal = Math.max(...stats.topMerchants.map(m => m.total))
-                return stats.topMerchants.slice(0, 10).map((merchant, index) => {
+                return stats.topMerchants.slice(0, 7).map((merchant, index) => {
                   const barWidth = (merchant.total / maxTotal) * 100
                   const color = getMerchantColor(merchant.name)
                   return (
@@ -435,7 +463,7 @@ export function Dashboard({ stats }: { stats: Stats }) {
         <div className="rounded-lg bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700">
           <div className="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 px-6 py-4">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-              Recent
+              Recent Transactions
             </h2>
             <Link
               href="/transactions"
@@ -446,8 +474,10 @@ export function Dashboard({ stats }: { stats: Stats }) {
           </div>
           {stats.recentTransactions.length > 0 ? (
             <ul className="divide-y divide-gray-200 dark:divide-gray-700">
-              {stats.recentTransactions.slice(0, 7).map((tx) => (
-                <li key={tx.id}>
+              {stats.recentTransactions.slice(0, 7).map((tx) => {
+                const isToday = new Date(tx.date).toDateString() === new Date().toDateString()
+                return (
+                <li key={tx.id} className={isToday ? 'border-l-4 border-l-gray-400 dark:border-l-gray-500' : ''}>
                   <Link
                     href={`/transactions/${tx.id}`}
                     className="flex items-center justify-between px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
@@ -487,7 +517,7 @@ export function Dashboard({ stats }: { stats: Stats }) {
                     </span>
                   </Link>
                 </li>
-              ))}
+              )})}
             </ul>
           ) : (
             <div className="flex h-32 items-center justify-center text-gray-400 dark:text-gray-500">

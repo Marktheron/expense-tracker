@@ -53,7 +53,7 @@ export default function RootLayout({
         <ToastProvider>
           <KeyboardShortcuts />
           <Navigation />
-          <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+          <main className="mx-auto max-w-[1400px] px-4 py-6 sm:px-6 lg:px-8">
             {children}
           </main>
           <FloatingTools />

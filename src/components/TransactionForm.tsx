@@ -10,11 +10,11 @@ import {
   Trash2,
   Save,
   Copy,
-  ShoppingCart,
+  Hamburger,
   Fuel,
-  Heart,
+  Cross,
   Home,
-  Droplets,
+  SoapDispenserDroplet,
   Car,
   Zap,
   Film,
@@ -61,11 +61,11 @@ interface Props {
 
 // Map category names to icons
 const categoryIcons: Record<string, LucideIcon> = {
-  'Groceries': ShoppingCart,
+  'Groceries': Hamburger,
   'Fuel': Fuel,
-  'Medical': Heart,
+  'Medical': Cross,
   'Household': Home,
-  'Toiletries': Droplets,
+  'Toiletries': SoapDispenserDroplet,
   'Transport': Car,
   'Utilities': Zap,
   'Entertainment': Film,
@@ -128,6 +128,9 @@ export function TransactionForm({ categories, transaction }: Props) {
   // Merchant autocomplete
   const [recentMerchants, setRecentMerchants] = useState<string[]>([])
   const [showMerchantSuggestions, setShowMerchantSuggestions] = useState(false)
+
+  // Category tooltip
+  const [tooltip, setTooltip] = useState<{ name: string; x: number; y: number } | null>(null)
 
   // Vitality tracking (Checkers and Dischem)
   const [vitalityProducts, setVitalityProducts] = useState<string[]>([])
@@ -353,10 +356,55 @@ export function TransactionForm({ categories, transaction }: Props) {
 
       {/* Transaction Details */}
       <div className="rounded-lg bg-white dark:bg-gray-800 p-6 shadow-sm border border-gray-200 dark:border-gray-700">
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-          Transaction Details
-        </h2>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+            Transaction Details
+          </h2>
+          {!showNotes && (
+            <button
+              type="button"
+              onClick={() => setShowNotes(true)}
+              className="inline-flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 transition-colors cursor-pointer"
+            >
+              <Plus className="h-3 w-3" />
+              Add note
+            </button>
+          )}
+        </div>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="relative">
+            <label htmlFor="merchant" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+              Merchant / Store
+            </label>
+            <input
+              type="text"
+              id="merchant"
+              value={merchant}
+              onChange={(e) => {
+                setMerchant(e.target.value)
+                setShowMerchantSuggestions(true)
+              }}
+              onBlur={() => setTimeout(() => setShowMerchantSuggestions(false), 200)}
+              placeholder="e.g., Woolworths, Shell, Chemist"
+              className="mt-1 block w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder:text-gray-400 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              required
+              autoComplete="off"
+            />
+            {showMerchantSuggestions && filteredMerchants.length > 0 && !transaction && (
+              <div className="absolute z-10 mt-1 w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                {filteredMerchants.slice(0, 8).map((name, index) => (
+                  <button
+                    key={index}
+                    type="button"
+                    onClick={() => selectMerchant(name)}
+                    className="w-full text-left px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-700"
+                  >
+                    <span className="text-gray-900 dark:text-white">{name}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
           <div>
             <label htmlFor="date" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
               Date
@@ -398,77 +446,33 @@ export function TransactionForm({ categories, transaction }: Props) {
               </button>
             </div>
           </div>
-          <div className="relative">
-            <label htmlFor="merchant" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-              Merchant / Store
-            </label>
-            <input
-              type="text"
-              id="merchant"
-              value={merchant}
-              onChange={(e) => {
-                setMerchant(e.target.value)
-                setShowMerchantSuggestions(true)
-              }}
-              onBlur={() => setTimeout(() => setShowMerchantSuggestions(false), 200)}
-              placeholder="e.g., Woolworths, Shell, Chemist"
-              className="mt-1 block w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder:text-gray-400 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-              required
-              autoComplete="off"
-            />
-            {showMerchantSuggestions && filteredMerchants.length > 0 && !transaction && (
-              <div className="absolute z-10 mt-1 w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-lg max-h-60 overflow-y-auto">
-                {filteredMerchants.slice(0, 8).map((name, index) => (
+          {showNotes && (
+            <div className="sm:col-span-2">
+              <div className="flex items-center justify-between">
+                <label htmlFor="notes" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Notes
+                </label>
+                {!notes.trim() && (
                   <button
-                    key={index}
                     type="button"
-                    onClick={() => selectMerchant(name)}
-                    className="w-full text-left px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-700"
+                    onClick={() => setShowNotes(false)}
+                    className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
                   >
-                    <span className="text-gray-900 dark:text-white">{name}</span>
+                    Hide
                   </button>
-                ))}
+                )}
               </div>
-            )}
-          </div>
-          <div className="sm:col-span-2">
-            {showNotes ? (
-              <div>
-                <div className="flex items-center justify-between">
-                  <label htmlFor="notes" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Notes
-                  </label>
-                  {!notes.trim() && (
-                    <button
-                      type="button"
-                      onClick={() => setShowNotes(false)}
-                      className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
-                    >
-                      Hide
-                    </button>
-                  )}
-                </div>
-                <textarea
-                  id="notes"
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  placeholder="Any additional notes..."
-                  autoFocus
-                  rows={2}
-                  className="mt-1 block w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder:text-gray-400 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 resize-y min-h-[60px]"
-                />
-              </div>
-            ) : (
-              <button
-                type="button"
-                onClick={() => setShowNotes(true)}
-                className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 transition-colors cursor-pointer"
-              >
-                <Plus className="h-3 w-3" />
-                Add note
-              </button>
-            )}
-          </div>
+              <textarea
+                id="notes"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="Any additional notes..."
+                autoFocus
+                rows={2}
+                className="mt-1 block w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder:text-gray-400 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 resize-y min-h-[60px]"
+              />
+            </div>
+          )}
         </div>
       </div>
 
@@ -482,8 +486,8 @@ export function TransactionForm({ categories, transaction }: Props) {
         </div>
 
         {/* Category icon buttons - always visible at top */}
-        <div className="mb-4">
-          <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-12 gap-3">
+        <div className="mb-4 relative">
+          <div className="flex flex-wrap gap-2">
             {sortCategories(categories).map((category) => {
               const Icon = getCategoryIcon(category.name)
               const hasItems = getLineItemsForCategory(category.id).length > 0
@@ -492,23 +496,30 @@ export function TransactionForm({ categories, transaction }: Props) {
                   key={category.id}
                   type="button"
                   onClick={() => addLineItem(category.id)}
-                  className="flex flex-col items-center gap-1 group cursor-pointer"
+                  onMouseMove={(e) => setTooltip({ name: category.name, x: e.clientX, y: e.clientY })}
+                  onMouseLeave={() => setTooltip(null)}
+                  className="group cursor-pointer"
                 >
                   <div
-                    className={`w-12 h-12 rounded-full flex items-center justify-center transition-transform group-hover:scale-110 ${
+                    className={`w-10 h-10 rounded-full flex items-center justify-center transition-transform group-hover:scale-110 ${
                       hasItems ? 'ring-2 ring-offset-2 ring-gray-400' : ''
                     }`}
                     style={{ backgroundColor: category.color }}
                   >
-                    <Icon className="h-6 w-6 text-white" />
+                    <Icon className="h-5 w-5 text-white" />
                   </div>
-                  <span className="text-xs text-gray-600 dark:text-gray-400 text-center leading-tight">
-                    {category.name}
-                  </span>
                 </button>
               )
             })}
           </div>
+          {tooltip && (
+            <div
+              className="fixed z-50 px-2 py-1 text-xs font-medium text-white bg-gray-900 dark:bg-gray-700 rounded shadow-lg pointer-events-none"
+              style={{ left: tooltip.x + 12, top: tooltip.y + 12 }}
+            >
+              {tooltip.name}
+            </div>
+          )}
         </div>
 
         {/* Categories with items */}
