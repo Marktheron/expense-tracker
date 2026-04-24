@@ -59,6 +59,11 @@ interface TopProduct {
   category: Category
 }
 
+interface TopMerchant {
+  name: string
+  total: number
+}
+
 interface CategoryChange {
   category: Category
   thisMonth: number
@@ -97,6 +102,7 @@ interface Stats {
   recentTransactions: Transaction[]
   currentMonth: string
   topProducts: TopProduct[]
+  topMerchants: TopMerchant[]
   monthComparison: MonthComparison
   spendingPace: SpendingPace
   vitality: Vitality
@@ -383,6 +389,40 @@ export function Dashboard({ stats }: { stats: Stats }) {
                   </span>
                 </div>
               ))}
+            </div>
+          </div>
+        )}
+
+        {/* Top Merchants */}
+        {stats.topMerchants.length > 0 && (
+          <div className="rounded-lg bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700">
+            <div className="border-b border-gray-200 dark:border-gray-700 px-6 py-4">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                Top Merchants
+              </h2>
+            </div>
+            <div className="p-4 space-y-3">
+              {(() => {
+                const maxTotal = Math.max(...stats.topMerchants.map(m => m.total))
+                return stats.topMerchants.slice(0, 10).map((merchant, index) => {
+                  const barWidth = (merchant.total / maxTotal) * 100
+                  const color = getMerchantColor(merchant.name)
+                  return (
+                    <div key={index} className="space-y-1">
+                      <div className="flex justify-between text-sm">
+                        <span className="font-medium text-gray-900 dark:text-white">{merchant.name}</span>
+                        <span className="text-gray-600 dark:text-gray-400">{formatCurrency(merchant.total)}</span>
+                      </div>
+                      <div className="h-4 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
+                        <div
+                          className="h-full rounded-full transition-all"
+                          style={{ width: `${barWidth}%`, backgroundColor: color }}
+                        />
+                      </div>
+                    </div>
+                  )
+                })
+              })()}
             </div>
           </div>
         )}

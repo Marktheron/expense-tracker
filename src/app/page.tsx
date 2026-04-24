@@ -108,6 +108,17 @@ async function getStats() {
     .sort((a, b) => b.count - a.count)
     .slice(0, 10)
 
+  // Top merchants by spending this month
+  const merchantTotals: Record<string, number> = {}
+  for (const tx of transactions) {
+    const txTotal = tx.lineItems.reduce((sum, item) => sum + item.amount, 0)
+    merchantTotals[tx.merchant] = (merchantTotals[tx.merchant] || 0) + txTotal
+  }
+  const topMerchants = Object.entries(merchantTotals)
+    .map(([name, total]) => ({ name, total }))
+    .sort((a, b) => b.total - a.total)
+    .slice(0, 10)
+
   // Line items count this month
   const lineItemsCount = allLineItems.length
 
@@ -230,6 +241,7 @@ async function getStats() {
     })),
     currentMonth: now.toLocaleString('default', { month: 'long', year: 'numeric' }),
     topProducts,
+    topMerchants,
     monthComparison,
     vitality: {
       checkers: { total: checkersTotal, cashback: checkersCashback },
