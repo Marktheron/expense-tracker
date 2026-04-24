@@ -401,14 +401,18 @@ export function Dashboard({ stats }: { stats: Stats }) {
                 Top Merchants
               </h2>
             </div>
-            <div className="p-4 space-y-3">
+            <div className="p-4 space-y-1">
               {(() => {
                 const maxTotal = Math.max(...stats.topMerchants.map(m => m.total))
                 return stats.topMerchants.slice(0, 10).map((merchant, index) => {
                   const barWidth = (merchant.total / maxTotal) * 100
                   const color = getMerchantColor(merchant.name)
                   return (
-                    <div key={index} className="space-y-1">
+                    <Link
+                      key={index}
+                      href={`/transactions?merchant=${encodeURIComponent(merchant.name)}`}
+                      className="block space-y-1 py-1 px-2 -mx-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 hover:shadow-sm transition-all cursor-pointer"
+                    >
                       <div className="flex justify-between text-sm">
                         <span className="font-medium text-gray-900 dark:text-white">{merchant.name}</span>
                         <span className="text-gray-600 dark:text-gray-400">{formatCurrency(merchant.total)}</span>
@@ -419,7 +423,7 @@ export function Dashboard({ stats }: { stats: Stats }) {
                           style={{ width: `${barWidth}%`, backgroundColor: color }}
                         />
                       </div>
-                    </div>
+                    </Link>
                   )
                 })
               })()}

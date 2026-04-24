@@ -38,6 +38,7 @@ interface Props {
   initialTransactions: Transaction[]
   categories: Category[]
   merchantColors: MerchantColor[]
+  initialMerchant?: string
 }
 
 function formatCurrency(amount: number) {
@@ -51,7 +52,7 @@ function getMerchantInitial(merchant: string): string {
   return merchant.charAt(0).toUpperCase()
 }
 
-export function TransactionList({ initialTransactions, categories, merchantColors }: Props) {
+export function TransactionList({ initialTransactions, categories, merchantColors, initialMerchant = '' }: Props) {
   // Build merchant color lookup from database
   const getMerchantColor = (merchant: string): string => {
     // Check for exact match first
@@ -70,7 +71,7 @@ export function TransactionList({ initialTransactions, categories, merchantColor
   const [transactions, setTransactions] = useState(initialTransactions)
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedCategory, setSelectedCategory] = useState<string>('')
-  const [selectedMerchant, setSelectedMerchant] = useState<string>('')
+  const [selectedMerchant, setSelectedMerchant] = useState<string>(initialMerchant)
   const [expandedTx, setExpandedTx] = useState<Set<string>>(new Set())
   const [isDeleting, setIsDeleting] = useState<string | null>(null)
 
