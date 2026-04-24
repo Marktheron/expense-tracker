@@ -39,6 +39,7 @@ interface Props {
   categories: Category[]
   merchantColors: MerchantColor[]
   initialMerchant?: string
+  initialCategory?: string
 }
 
 function formatCurrency(amount: number) {
@@ -52,7 +53,7 @@ function getMerchantInitial(merchant: string): string {
   return merchant.charAt(0).toUpperCase()
 }
 
-export function TransactionList({ initialTransactions, categories, merchantColors, initialMerchant = '' }: Props) {
+export function TransactionList({ initialTransactions, categories, merchantColors, initialMerchant = '', initialCategory = '' }: Props) {
   // Build merchant color lookup from database
   const getMerchantColor = (merchant: string): string => {
     // Check for exact match first
@@ -70,7 +71,7 @@ export function TransactionList({ initialTransactions, categories, merchantColor
   const { showToast } = useToast()
   const [transactions, setTransactions] = useState(initialTransactions)
   const [searchQuery, setSearchQuery] = useState('')
-  const [selectedCategory, setSelectedCategory] = useState<string>('')
+  const [selectedCategory, setSelectedCategory] = useState<string>(initialCategory)
   const [selectedMerchant, setSelectedMerchant] = useState<string>(initialMerchant)
   const [expandedTx, setExpandedTx] = useState<Set<string>>(new Set())
   const [isDeleting, setIsDeleting] = useState<string | null>(null)
@@ -257,12 +258,14 @@ export function TransactionList({ initialTransactions, categories, merchantColor
               </button>
             )}
           </div>
-          <div className="relative">
-            <Filter className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+          <div className="relative flex items-center">
+            <Filter className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 pointer-events-none" />
             <select
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
-              className="appearance-none rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 py-2 pl-10 pr-8 text-sm text-gray-900 dark:text-white focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className={`appearance-none rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 py-2 pl-10 text-sm text-gray-900 dark:text-white focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 ${
+                selectedCategory ? 'pr-8' : 'pr-8'
+              }`}
             >
               <option value="">All Categories</option>
               {categories.map((cat) => (
@@ -271,13 +274,24 @@ export function TransactionList({ initialTransactions, categories, merchantColor
                 </option>
               ))}
             </select>
+            {selectedCategory && (
+              <button
+                type="button"
+                onClick={() => setSelectedCategory('')}
+                className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
           </div>
-          <div className="relative">
-            <Store className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+          <div className="relative flex items-center">
+            <Store className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 pointer-events-none" />
             <select
               value={selectedMerchant}
               onChange={(e) => setSelectedMerchant(e.target.value)}
-              className="appearance-none rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 py-2 pl-10 pr-8 text-sm text-gray-900 dark:text-white focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className={`appearance-none rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 py-2 pl-10 text-sm text-gray-900 dark:text-white focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 ${
+                selectedMerchant ? 'pr-8' : 'pr-8'
+              }`}
             >
               <option value="">All Merchants</option>
               {merchants.map((merchant) => (
@@ -286,6 +300,15 @@ export function TransactionList({ initialTransactions, categories, merchantColor
                 </option>
               ))}
             </select>
+            {selectedMerchant && (
+              <button
+                type="button"
+                onClick={() => setSelectedMerchant('')}
+                className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
           </div>
         </div>
         <div className="flex gap-2">

@@ -57,6 +57,8 @@ interface ExistingTransaction {
 interface Props {
   categories: Category[]
   transaction?: ExistingTransaction
+  onSuccess?: () => void
+  onCancel?: () => void
 }
 
 // Map category names to icons
@@ -111,7 +113,7 @@ function sortCategories<T extends { name: string }>(cats: T[]): T[] {
   })
 }
 
-export function TransactionForm({ categories, transaction }: Props) {
+export function TransactionForm({ categories, transaction, onSuccess, onCancel }: Props) {
   const router = useRouter()
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -128,6 +130,7 @@ export function TransactionForm({ categories, transaction }: Props) {
   // Merchant autocomplete
   const [recentMerchants, setRecentMerchants] = useState<string[]>([])
   const [showMerchantSuggestions, setShowMerchantSuggestions] = useState(false)
+  const [selectedMerchantIndex, setSelectedMerchantIndex] = useState(-1)
 
   // Category tooltip
   const [tooltip, setTooltip] = useState<{ name: string; x: number; y: number } | null>(null)
@@ -320,8 +323,12 @@ export function TransactionForm({ categories, transaction }: Props) {
       })
 
       if (res.ok) {
-        router.push('/transactions')
-        router.refresh()
+        if (onSuccess) {
+          onSuccess()
+        } else {
+          router.push('/transactions')
+          router.refresh()
+        }
       }
     } finally {
       setIsSubmitting(false)
@@ -338,7 +345,7 @@ export function TransactionForm({ categories, transaction }: Props) {
         <div className="flex gap-3">
           <button
             type="button"
-            onClick={() => router.back()}
+            onClick={() => onCancel ? onCancel() : router.back()}
             className="rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer"
           >
             Cancel
@@ -383,8 +390,32 @@ export function TransactionForm({ categories, transaction }: Props) {
               onChange={(e) => {
                 setMerchant(e.target.value)
                 setShowMerchantSuggestions(true)
+                setSelectedMerchantIndex(-1)
               }}
               onBlur={() => setTimeout(() => setShowMerchantSuggestions(false), 200)}
+              onKeyDown={(e) => {
+                const suggestions = filteredMerchants.slice(0, 8)
+                if (!showMerchantSuggestions || suggestions.length === 0) return
+
+                if (e.key === 'ArrowDown') {
+                  e.preventDefault()
+                  setSelectedMerchantIndex(prev =>
+                    prev < suggestions.length - 1 ? prev + 1 : 0
+                  )
+                } else if (e.key === 'ArrowUp') {
+                  e.preventDefault()
+                  setSelectedMerchantIndex(prev =>
+                    prev > 0 ? prev - 1 : suggestions.length - 1
+                  )
+                } else if (e.key === 'Enter' && selectedMerchantIndex >= 0) {
+                  e.preventDefault()
+                  selectMerchant(suggestions[selectedMerchantIndex])
+                  setSelectedMerchantIndex(-1)
+                } else if (e.key === 'Escape') {
+                  setShowMerchantSuggestions(false)
+                  setSelectedMerchantIndex(-1)
+                }
+              }}
               placeholder="e.g., Woolworths, Shell, Chemist"
               className="mt-1 block w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder:text-gray-400 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
               required
@@ -397,7 +428,11 @@ export function TransactionForm({ categories, transaction }: Props) {
                     key={index}
                     type="button"
                     onClick={() => selectMerchant(name)}
-                    className="w-full text-left px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-700"
+                    className={`w-full text-left px-3 py-2 ${
+                      index === selectedMerchantIndex
+                        ? 'bg-blue-50 dark:bg-blue-900/30'
+                        : 'hover:bg-gray-50 dark:hover:bg-gray-700'
+                    }`}
                   >
                     <span className="text-gray-900 dark:text-white">{name}</span>
                   </button>
@@ -501,8 +536,8 @@ export function TransactionForm({ categories, transaction }: Props) {
                   className="group cursor-pointer"
                 >
                   <div
-                    className={`w-10 h-10 rounded-full flex items-center justify-center transition-transform group-hover:scale-110 ${
-                      hasItems ? 'ring-2 ring-offset-2 ring-gray-400' : ''
+                    className={`w-10 h-10 rounded-full flex items-center justify-center transition-all group-hover:scale-110 ${
+                      hasItems ? 'opacity-100 saturate-100' : 'opacity-50 saturate-50 group-hover:opacity-100 group-hover:saturate-100'
                     }`}
                     style={{ backgroundColor: category.color }}
                   >
@@ -551,7 +586,7 @@ export function TransactionForm({ categories, transaction }: Props) {
       <div className="flex justify-end gap-3">
         <button
           type="button"
-          onClick={() => router.back()}
+          onClick={() => onCancel ? onCancel() : router.back()}
           className="rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer"
         >
           Cancel

@@ -364,9 +364,10 @@ export function Dashboard({ stats }: { stats: Stats }) {
                   const diff = item.thisMonth - item.lastMonth
                   const isUp = diff > 0
                   return (
-                    <div
+                    <Link
                       key={item.category.id}
-                      className="flex items-center justify-between px-4 py-2"
+                      href={`/transactions?category=${encodeURIComponent(item.category.id)}`}
+                      className="flex items-center justify-between px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                     >
                       <div className="flex items-center gap-2">
                         <div
@@ -381,7 +382,7 @@ export function Dashboard({ stats }: { stats: Stats }) {
                         {isUp ? <ArrowUp className="h-4 w-4" strokeWidth={3} /> : <ArrowDown className="h-4 w-4" strokeWidth={3} />}
                         {isUp ? '+' : ''}{formatCurrency(diff)}
                       </span>
-                    </div>
+                    </Link>
                   )
                 })}
             </div>

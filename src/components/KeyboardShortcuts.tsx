@@ -2,9 +2,11 @@
 
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { useExpenseModal } from './ExpenseModal'
 
 export function KeyboardShortcuts() {
   const router = useRouter()
+  const { openModal } = useExpenseModal()
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -17,10 +19,10 @@ export function KeyboardShortcuts() {
         return
       }
 
-      // N - New transaction
+      // N - New transaction (opens modal)
       if (e.key === 'n' || e.key === 'N') {
         e.preventDefault()
-        router.push('/transactions/new')
+        openModal()
       }
 
       // T - Transactions list
@@ -46,7 +48,7 @@ export function KeyboardShortcuts() {
         e.preventDefault()
         alert(
           'Keyboard Shortcuts:\n\n' +
-          'N - New transaction\n' +
+          'N - New transaction (modal)\n' +
           'T - Transactions\n' +
           'D - Dashboard\n' +
           'R - Reports\n' +
@@ -57,7 +59,7 @@ export function KeyboardShortcuts() {
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [router])
+  }, [router, openModal])
 
   return null
 }

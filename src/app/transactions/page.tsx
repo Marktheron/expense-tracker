@@ -2,11 +2,11 @@ import { prisma } from '@/lib/db'
 import { TransactionList } from '@/components/TransactionList'
 
 interface Props {
-  searchParams: Promise<{ merchant?: string }>
+  searchParams: Promise<{ merchant?: string; category?: string }>
 }
 
 export default async function TransactionsPage({ searchParams }: Props) {
-  const { merchant: merchantFilter } = await searchParams
+  const { merchant: merchantFilter, category: categoryFilter } = await searchParams
   const [rawTransactions, rawCategories, merchantColors] = await Promise.all([
     prisma.transaction.findMany({
       include: {
@@ -54,6 +54,7 @@ export default async function TransactionsPage({ searchParams }: Props) {
         categories={categories}
         merchantColors={merchantColors}
         initialMerchant={merchantFilter}
+        initialCategory={categoryFilter}
       />
     </div>
   )

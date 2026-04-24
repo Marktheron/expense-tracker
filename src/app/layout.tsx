@@ -5,6 +5,7 @@ import { Navigation } from "@/components/Navigation";
 import { KeyboardShortcuts } from "@/components/KeyboardShortcuts";
 import { ToastProvider } from "@/components/Toast";
 import { FloatingTools } from "@/components/FloatingTools";
+import { ExpenseModalProvider } from "@/components/ExpenseModal";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -51,12 +52,14 @@ export default function RootLayout({
       </head>
       <body className="min-h-full bg-gray-100 dark:bg-gray-950">
         <ToastProvider>
-          <KeyboardShortcuts />
-          <Navigation />
-          <main className="mx-auto max-w-[1400px] px-4 py-6 sm:px-6 lg:px-8">
-            {children}
-          </main>
-          <FloatingTools />
+          <ExpenseModalProvider>
+            <KeyboardShortcuts />
+            <Navigation />
+            <main className="mx-auto max-w-[1400px] px-4 py-6 sm:px-6 lg:px-8">
+              {children}
+            </main>
+            <FloatingTools />
+          </ExpenseModalProvider>
         </ToastProvider>
       </body>
     </html>

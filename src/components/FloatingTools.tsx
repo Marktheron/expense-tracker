@@ -1,7 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { Wrench, Calculator, StickyNote, ShoppingCart, ArrowRightLeft, Zap, X, Minus } from 'lucide-react'
+import { Wrench, Calculator, StickyNote, ShoppingCart, ArrowRightLeft, Zap, X, Minus, Plus } from 'lucide-react'
+import { useExpenseModal } from './ExpenseModal'
 
 // Import the modal components (we'll render them conditionally)
 import dynamic from 'next/dynamic'
@@ -30,6 +31,7 @@ const tools: Tool[] = [
 export function FloatingTools() {
   const [isExpanded, setIsExpanded] = useState(false)
   const [openTools, setOpenTools] = useState<Set<string>>(new Set())
+  const { openModal } = useExpenseModal()
 
   const openTool = (toolId: string) => {
     setOpenTools(prev => new Set(prev).add(toolId))
@@ -45,9 +47,18 @@ export function FloatingTools() {
 
   return (
     <>
+      {/* Add Expense FAB */}
+      <button
+        onClick={openModal}
+        className="fixed bottom-4 right-4 z-50 h-14 w-14 rounded-full bg-green-600 text-white shadow-lg hover:bg-green-500 hover:scale-105 transition-all flex items-center justify-center"
+        title="Add Expense (N)"
+      >
+        <Plus className="h-7 w-7" strokeWidth={2.5} />
+      </button>
+
       {/* Toolbar */}
       <div
-        className="fixed bottom-4 right-4 z-40 flex flex-col-reverse items-end gap-2"
+        className="fixed bottom-20 right-4 z-50 flex flex-col-reverse items-end gap-2"
         onMouseEnter={() => setIsExpanded(true)}
         onMouseLeave={() => setIsExpanded(false)}
       >
@@ -56,7 +67,7 @@ export function FloatingTools() {
           className="h-10 w-10 rounded-full bg-gray-800 text-white shadow-lg hover:bg-gray-700 transition-all flex items-center justify-center"
           title="Tools"
         >
-          <Wrench className={`h-5 w-5 transition-transform duration-300 ${isExpanded ? 'rotate-90' : ''}`} />
+          <Wrench className={`h-5 w-5 transition-transform duration-300 ${isExpanded ? '-rotate-90' : ''}`} />
         </button>
 
         {/* Tool buttons */}
