@@ -1,7 +1,8 @@
 'use client'
 
 import Link from 'next/link'
-import { format } from 'date-fns'
+import { useRouter } from 'next/navigation'
+import { format, getDaysInMonth, startOfMonth } from 'date-fns'
 import { PlusCircle, ArrowUp, ArrowDown, Wallet, NotepadText, Activity } from 'lucide-react'
 import {
   BarChart,
@@ -129,6 +130,8 @@ function getMerchantInitial(merchant: string): string {
 }
 
 export function Dashboard({ stats }: { stats: Stats }) {
+  const router = useRouter()
+
   const getMerchantColor = (merchant: string): string => {
     const exact = stats.merchantColors.find((m) => m.name === merchant)
     if (exact) return exact.color
@@ -157,6 +160,53 @@ export function Dashboard({ stats }: { stats: Stats }) {
           Add Expense
         </Link>
       </div>
+
+      {/* Day Circles */}
+      {(() => {
+        const today = new Date()
+        const currentMonth = startOfMonth(today)
+        const daysInMonth = getDaysInMonth(today)
+        const todayDate = today.getDate()
+
+        // Get days with transactions from dailySpending
+        const daysWithTransactions = new Set(
+          stats.dailySpending.map(d => new Date(d.date).getDate())
+        )
+
+        return (
+          <div className="flex gap-1 overflow-x-auto pb-2">
+            {Array.from({ length: daysInMonth }, (_, i) => {
+              const dayNum = i + 1
+              const dayDate = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), dayNum)
+              const isPast = dayNum < todayDate
+              const isToday = dayNum === todayDate
+              const isFuture = dayNum > todayDate
+              const isWeekend = dayDate.getDay() === 0 || dayDate.getDay() === 6
+              const hasTransactions = daysWithTransactions.has(dayNum)
+              const dateStr = format(dayDate, 'yyyy-MM-dd')
+
+              return (
+                <button
+                  key={dayNum}
+                  onClick={() => hasTransactions || isToday ? router.push(`/transactions?date=${dateStr}`) : undefined}
+                  className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-all border-2 ${
+                    isToday
+                      ? `bg-teal-500 text-white cursor-pointer ${!isWeekend ? 'border-teal-500' : ''}`
+                      : isFuture
+                        ? `text-gray-400 dark:text-gray-500 !cursor-default ${!isWeekend ? 'border-transparent' : ''}`
+                        : hasTransactions
+                          ? `bg-white dark:bg-gray-800 text-gray-900 dark:text-white cursor-pointer ${!isWeekend ? 'border-transparent hover:border-gray-500 dark:hover:border-gray-400' : 'hover:!border-gray-900 dark:hover:!border-white'}`
+                          : `bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400 !cursor-default ${!isWeekend ? 'border-transparent' : ''}`
+                  }`}
+                  style={isWeekend ? { borderColor: '#889ebe' } : undefined}
+                >
+                  {dayNum}
+                </button>
+              )
+            })}
+          </div>
+        )
+      })()}
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -254,7 +304,7 @@ export function Dashboard({ stats }: { stats: Stats }) {
           </h2>
           {stats.dailySpending.length > 0 ? (
             <ResponsiveContainer width="100%" height={250}>
-              <BarChart data={stats.dailySpending}>
+              <BarChart data={stats.dailySpending} style={{ cursor: 'pointer' }}>
                 <XAxis
                   dataKey="date"
                   tickFormatter={(date) => format(new Date(date), 'd MMM')}
@@ -284,6 +334,12 @@ export function Dashboard({ stats }: { stats: Stats }) {
                       name={cat.name}
                       stackId="stack"
                       fill={cat.color}
+                      onClick={(data) => {
+                        if (data?.date) {
+                          const clickedDate = format(new Date(data.date), 'yyyy-MM-dd')
+                          router.push(`/transactions?date=${clickedDate}`)
+                        }
+                      }}
                     />
                   ))
                 })()}
@@ -380,7 +436,7 @@ export function Dashboard({ stats }: { stats: Stats }) {
                         isUp ? 'text-red-600' : 'text-green-600'
                       }`}>
                         {isUp ? <ArrowUp className="h-4 w-4" strokeWidth={3} /> : <ArrowDown className="h-4 w-4" strokeWidth={3} />}
-                        {isUp ? '+' : ''}{formatCurrency(diff)}
+                        {formatCurrency(Math.abs(diff))}
                       </span>
                     </Link>
                   )
@@ -399,9 +455,10 @@ export function Dashboard({ stats }: { stats: Stats }) {
             </div>
             <div className="divide-y divide-gray-100 dark:divide-gray-700">
               {stats.topProducts.slice(0, 10).map((product, index) => (
-                <div
+                <Link
                   key={index}
-                  className="flex items-center justify-between px-4 py-2"
+                  href={`/transactions?search=${encodeURIComponent(product.description)}`}
+                  className="flex items-center justify-between px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                 >
                   <div className="flex items-center gap-2">
                     <div
@@ -416,7 +473,7 @@ export function Dashboard({ stats }: { stats: Stats }) {
                   <span className="font-bold text-gray-900 dark:text-white text-sm">
                     {formatCurrency(product.total)}
                   </span>
-                </div>
+                </Link>
               ))}
             </div>
           </div>

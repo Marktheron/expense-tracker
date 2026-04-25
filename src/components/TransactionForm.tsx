@@ -23,6 +23,7 @@ import {
   CreditCard,
   MoreHorizontal,
   Landmark,
+  X,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -126,6 +127,8 @@ export function TransactionForm({ categories, transaction, onSuccess, onCancel }
   const [merchant, setMerchant] = useState(transaction?.merchant || '')
   const [notes, setNotes] = useState(transaction?.notes || '')
   const [showNotes, setShowNotes] = useState(!!transaction?.notes)
+  const dateInputRef = useRef<HTMLInputElement>(null)
+  const merchantInputRef = useRef<HTMLInputElement>(null)
 
   // Merchant autocomplete
   const [recentMerchants, setRecentMerchants] = useState<string[]>([])
@@ -138,6 +141,11 @@ export function TransactionForm({ categories, transaction, onSuccess, onCancel }
   // Vitality tracking (Checkers and Dischem)
   const [vitalityProducts, setVitalityProducts] = useState<string[]>([])
   const isVitalityMerchant = merchant.toLowerCase().includes('checkers') || merchant.toLowerCase().includes('dischem')
+
+  useEffect(() => {
+    // Focus merchant input on mount
+    merchantInputRef.current?.focus()
+  }, [])
 
   useEffect(() => {
     // Fetch recent merchants on mount
@@ -344,13 +352,6 @@ export function TransactionForm({ categories, transaction, onSuccess, onCancel }
         </h1>
         <div className="flex gap-3">
           <button
-            type="button"
-            onClick={() => onCancel ? onCancel() : router.back()}
-            className="rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer"
-          >
-            Cancel
-          </button>
-          <button
             type="submit"
             disabled={isSubmitting || !merchant.trim() || lineItems.length === 0}
             className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
@@ -358,25 +359,37 @@ export function TransactionForm({ categories, transaction, onSuccess, onCancel }
             <Save className="h-4 w-4" />
             {isSubmitting ? 'Saving...' : transaction ? 'Update' : 'Save'}
           </button>
+          <button
+            type="button"
+            onClick={() => onCancel ? onCancel() : router.back()}
+            className="rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer"
+          >
+            Cancel
+          </button>
         </div>
       </div>
 
       {/* Transaction Details */}
       <div className="rounded-lg bg-white dark:bg-gray-800 p-6 shadow-sm border border-gray-200 dark:border-gray-700">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-            Transaction Details
-          </h2>
-          {!showNotes && (
-            <button
-              type="button"
-              onClick={() => setShowNotes(true)}
-              className="inline-flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 transition-colors cursor-pointer"
-            >
-              <Plus className="h-3 w-3" />
-              Add note
-            </button>
-          )}
+          <div className="flex items-center gap-3">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+              Transaction Details
+            </h2>
+            {!showNotes && (
+              <button
+                type="button"
+                onClick={() => setShowNotes(true)}
+                className="inline-flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 transition-colors cursor-pointer"
+              >
+                <Plus className="h-3 w-3" />
+                Add note
+              </button>
+            )}
+          </div>
+          <div className="text-lg font-bold text-gray-900 dark:text-white">
+            Total: R{getGrandTotal().toFixed(2)}
+          </div>
         </div>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div className="relative">
@@ -384,6 +397,7 @@ export function TransactionForm({ categories, transaction, onSuccess, onCancel }
               Merchant / Store
             </label>
             <input
+              ref={merchantInputRef}
               type="text"
               id="merchant"
               value={merchant}
@@ -417,10 +431,22 @@ export function TransactionForm({ categories, transaction, onSuccess, onCancel }
                 }
               }}
               placeholder="e.g., Woolworths, Shell, Chemist"
-              className="mt-1 block w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder:text-gray-400 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="mt-1 block w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder:text-gray-400 px-3 py-2 pr-9 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
               required
               autoComplete="off"
             />
+            {merchant && (
+              <button
+                type="button"
+                onClick={() => {
+                  setMerchant('')
+                  merchantInputRef.current?.focus()
+                }}
+                className="absolute right-3 top-[calc(50%+2px)] -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
             {showMerchantSuggestions && filteredMerchants.length > 0 && !transaction && (
               <div className="absolute z-10 mt-1 w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-lg max-h-60 overflow-y-auto">
                 {filteredMerchants.slice(0, 8).map((name, index) => (
@@ -446,11 +472,13 @@ export function TransactionForm({ categories, transaction, onSuccess, onCancel }
             </label>
             <div className="mt-1 flex gap-2">
               <input
+                ref={dateInputRef}
                 type="date"
                 id="date"
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
-                className="block w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                onClick={() => dateInputRef.current?.showPicker()}
+                className="block w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer"
                 required
               />
               <button
@@ -513,13 +541,6 @@ export function TransactionForm({ categories, transaction, onSuccess, onCancel }
 
       {/* Line Items by Category */}
       <div className="rounded-lg bg-white dark:bg-gray-800 p-6 shadow-sm border border-gray-200 dark:border-gray-700">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Items</h2>
-          <div className="text-lg font-bold text-gray-900 dark:text-white">
-            Total: R{getGrandTotal().toFixed(2)}
-          </div>
-        </div>
-
         {/* Category icon buttons - always visible at top */}
         <div className="mb-4 relative">
           <div className="flex flex-wrap gap-2">
@@ -536,12 +557,23 @@ export function TransactionForm({ categories, transaction, onSuccess, onCancel }
                   className="group cursor-pointer"
                 >
                   <div
-                    className={`w-10 h-10 rounded-full flex items-center justify-center transition-all group-hover:scale-110 ${
-                      hasItems ? 'opacity-100 saturate-100' : 'opacity-50 saturate-50 group-hover:opacity-100 group-hover:saturate-100'
-                    }`}
-                    style={{ backgroundColor: category.color }}
+                    className="w-9 h-9 rounded-full flex items-center justify-center transition-all group-hover:opacity-100"
+                    style={hasItems
+                      ? { backgroundColor: category.color }
+                      : undefined
+                    }
                   >
-                    <Icon className="h-5 w-5 text-white" />
+                    <div
+                      className={`absolute w-9 h-9 rounded-full transition-opacity ${
+                        hasItems ? 'opacity-0' : 'opacity-0 group-hover:opacity-30'
+                      }`}
+                      style={{ backgroundColor: category.color }}
+                    />
+                    <Icon
+                      className={`h-5 w-5 transition-colors relative z-10 ${
+                        hasItems ? 'text-white' : 'text-gray-900 dark:text-gray-100'
+                      }`}
+                    />
                   </div>
                 </button>
               )
@@ -549,7 +581,7 @@ export function TransactionForm({ categories, transaction, onSuccess, onCancel }
           </div>
           {tooltip && (
             <div
-              className="fixed z-50 px-2 py-1 text-xs font-medium text-white bg-gray-900 dark:bg-gray-700 rounded shadow-lg pointer-events-none"
+              className="fixed z-50 px-2 py-1 text-xs font-medium text-white bg-gray-900 dark:bg-gray-700 rounded-lg shadow-lg pointer-events-none"
               style={{ left: tooltip.x + 12, top: tooltip.y + 12 }}
             >
               {tooltip.name}
@@ -585,19 +617,19 @@ export function TransactionForm({ categories, transaction, onSuccess, onCancel }
       {/* Submit */}
       <div className="flex justify-end gap-3">
         <button
-          type="button"
-          onClick={() => onCancel ? onCancel() : router.back()}
-          className="rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer"
-        >
-          Cancel
-        </button>
-        <button
           type="submit"
           disabled={isSubmitting || !merchant.trim() || lineItems.length === 0}
           className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
         >
           <Save className="h-4 w-4" />
           {isSubmitting ? 'Saving...' : transaction ? 'Update' : 'Save Transaction'}
+        </button>
+        <button
+          type="button"
+          onClick={() => onCancel ? onCancel() : router.back()}
+          className="rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer"
+        >
+          Cancel
         </button>
       </div>
     </form>

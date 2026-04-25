@@ -2,11 +2,11 @@ import { prisma } from '@/lib/db'
 import { TransactionList } from '@/components/TransactionList'
 
 interface Props {
-  searchParams: Promise<{ merchant?: string; category?: string }>
+  searchParams: Promise<{ merchant?: string; category?: string; date?: string; search?: string }>
 }
 
 export default async function TransactionsPage({ searchParams }: Props) {
-  const { merchant: merchantFilter, category: categoryFilter } = await searchParams
+  const { merchant: merchantFilter, category: categoryFilter, date: dateFilter, search: searchFilter } = await searchParams
   const [rawTransactions, rawCategories, merchantColors] = await Promise.all([
     prisma.transaction.findMany({
       include: {
@@ -14,8 +14,7 @@ export default async function TransactionsPage({ searchParams }: Props) {
           include: { category: true },
         },
       },
-      orderBy: { date: 'desc' },
-      take: 50,
+      orderBy: [{ date: 'desc' }, { createdAt: 'desc' }],
     }),
     prisma.category.findMany({
       orderBy: { name: 'asc' },
@@ -26,8 +25,10 @@ export default async function TransactionsPage({ searchParams }: Props) {
   const transactions = rawTransactions.map((tx) => ({
     id: tx.id,
     date: tx.date.toISOString(),
+    createdAt: tx.createdAt.toISOString(),
     merchant: tx.merchant,
     notes: tx.notes,
+    flagged: tx.flagged,
     lineItems: tx.lineItems.map((li) => ({
       id: li.id,
       description: li.description,
@@ -55,6 +56,8 @@ export default async function TransactionsPage({ searchParams }: Props) {
         merchantColors={merchantColors}
         initialMerchant={merchantFilter}
         initialCategory={categoryFilter}
+        initialDate={dateFilter}
+        initialSearch={searchFilter}
       />
     </div>
   )
