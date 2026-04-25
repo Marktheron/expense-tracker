@@ -55,3 +55,14 @@ label[for],
 .animate-slide-up {
   animation: slide-up 0.2s ease-out;
 }
+
+@keyframes slideInFromRight {
+  from {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}

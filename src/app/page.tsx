@@ -101,7 +101,7 @@ async function getStats() {
           include: { category: true },
         },
       },
-      orderBy: { date: 'desc' },
+      orderBy: [{ date: 'desc' }, { createdAt: 'desc' }],
       take: 7,
     }),
     prisma.merchantColor.findMany(),

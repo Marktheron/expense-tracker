@@ -49,6 +49,7 @@ function ToastContainer({ toasts, onDismiss }: { toasts: Toast[]; onDismiss: (id
       {toasts.map((toast) => (
         <div
           key={toast.id}
+          className="toast-slide-in"
           style={{
             display: 'flex',
             alignItems: 'center',
@@ -59,6 +60,7 @@ function ToastContainer({ toasts, onDismiss }: { toasts: Toast[]; onDismiss: (id
             borderRadius: '8px',
             boxShadow: '0 10px 25px rgba(0, 0, 0, 0.3)',
             minWidth: '300px',
+            animation: 'slideInFromRight 0.3s ease-out',
           }}
         >
           <span style={{ flex: 1 }}>{toast.message}</span>
